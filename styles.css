@@ -1,0 +1,67 @@
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Hide arrows from number inputs for the zoom percentage */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* Status Badges */
+.status-badge { 
+    display: inline-block; 
+    padding: 2px 8px; 
+    border-radius: 9999px; 
+    font-size: 0.7rem; 
+    font-weight: 700; 
+    border: 1px solid #ccc; 
+    cursor: pointer; 
+    outline: none; 
+    transition: 0.2s; 
+    text-align: center; 
+    max-width: 130px; 
+    width: 100%; 
+}
+.status-Sent { color: #ea580c; border-color: #fdba74; background: #fff7ed; }
+.status-Approved { color: #16a34a; border-color: #86efac; background: #f0fdf4; }
+.status-Rejected { color: #dc2626; border-color: #fca5a5; background: #fef2f2; }
+.status-InProgress { color: #2563eb; border-color: #93c5fd; background: #eff6ff; }
+.status-Completed { color: #16a34a; border-color: #86efac; background: #f0fdf4; }
+
+/* Tabs */
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.2s ease-in-out; }
+
+/* Ledger Full Screen Modal Animation (Moved from index.html) */
+#ledgerModal {
+    transform: translateY(100%);
+    transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+    will-change: transform;
+}
+#ledgerModal.ledger-sheet-open {
+    transform: translateY(0);
+}
+
+/* Animations */
+@keyframes fadeIn { 
+    from { opacity: 0; transform: translateY(3px); } 
+    to { opacity: 1; transform: translateY(0); } 
+}
+
+/* Skeleton Loading Shine Effect (Fixed syntax) */
+.skeleton-loader {
+    border-radius: 4px; 
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%; 
+    animation: 1.5s shine linear infinite; 
+}
+@keyframes shine { 
+    to { background-position-x: -200%; } 
+}

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <title>Etch System</title>
+    <meta name="theme-color" content="#4338ca">
+    <meta name="description" content="Etch Signage Project and Ledger Management System">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Etch">
+    <link rel="apple-touch-icon" href="https://www.etchsignage.com/icon-192x192.png">
+    <link rel="icon" href="https://www.etchsignage.com/favicon.ico" type="image/x-icon">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen overflow-x-hidden text-sm">
+
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-white/90 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center">
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-3"></div>
+        <div id="loadingText" class="text-base font-bold text-gray-700">Processing...</div>
+    </div>
+
+    <div id="loginView" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-sm text-center border border-gray-100">
+            <h2 class="text-xl font-bold text-gray-900 mb-1">System Login</h2>
+            <p class="text-gray-500 mb-5 text-xs">Please enter your credentials.</p>
+            <form id="loginForm" class="space-y-3">
+                <input type="text" id="loginUser" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Username, Email, or Contact No." autocomplete="username" required>
+                <input type="password" id="loginPass" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Password" autocomplete="current-password" required>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition shadow-md">Secure Login</button>
+            </form>
+            <div id="loginFeedback" class="text-red-500 mt-3 text-xs font-semibold"></div>
+        </div>
+    </div>
+
+    <div id="changePassView" class="hidden min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-sm text-center border border-gray-100">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">Account Setup</h2>
+            <form id="changePassForm" class="space-y-3">
+                <input type="text" id="newUsername" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="New Username" required>
+                <input type="password" id="newPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="New Password" required>
+                <input type="password" id="confirmPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Confirm Password" required>
+                <hr class="border-gray-200 my-2">
+                <input type="email" id="newEmail" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Email Address" required>
+                <input type="text" id="newContact" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Contact Number" required>
+                <button type="submit" class="w-full bg-gray-900 hover:bg-black text-white font-bold py-2 rounded-lg transition">Update & Login</button>
+            </form>
+            <div id="changeFeedback" class="text-red-500 mt-3 text-xs font-semibold"></div>
+        </div>
+    </div>
+
+    <div id="appView" class="hidden flex flex-col h-screen w-full relative">
+
+        <header class="bg-indigo-700 text-white shadow-md z-40 sticky top-0">
+            <div class="flex justify-between items-center px-4 h-14 w-full">
+                <div class="flex items-center gap-3">
+                    <img id="headerLogo1" src="" class="h-7 w-7 object-cover rounded-full border border-white/30" alt="Logo">
+                    <h1 class="font-black text-base tracking-tight" id="appTitle">Dashboard</h1>
+                </div>
+                <button onclick="toggleAccountMenu()" class="flex items-center gap-2 hover:bg-indigo-600 px-2 py-1 rounded-lg transition focus:outline-none">
+                    <span id="displayUserName" class="font-bold text-sm">User</span>
+                    <img id="headerAvatar" src="" class="w-8 h-8 rounded-full border border-indigo-400 object-cover bg-white">
+                </button>
+            </div>
+        </header>
+
+        <div id="menuBackdrop" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[90] transition-opacity" onclick="closeAllMenus()"></div>
+
+        <aside id="navMenu" class="hidden"></aside>
+
+        <aside id="accountMenu" class="fixed inset-y-0 right-0 w-[75%] sm:w-72 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out z-[100] flex flex-col">
+            <div class="bg-gray-50 p-5 flex flex-col items-center border-b border-gray-200 relative">
+                <button onclick="toggleAccountMenu()" class="absolute top-3 left-3 text-gray-400 hover:text-gray-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+                <div class="relative cursor-pointer group mb-2" onclick="openFSModal('uploadAvatarModal')">
+                    <img id="menuAvatar" src="" class="w-20 h-20 rounded-full border-2 border-white shadow-sm object-cover bg-white">
+                    <div class="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </div>
+                </div>
+                <h2 id="menuName" class="text-lg font-bold text-gray-900"></h2>
+                <p id="menuUsername" class="text-xs font-bold text-indigo-400 mb-0.5"></p>
+                <p id="menuEmail" class="text-xs text-gray-500"></p>
+                <div class="mt-2 px-3 py-1 bg-white rounded-full border border-gray-200 shadow-sm text-[10px] font-bold text-gray-600 uppercase">
+                    Signature: <span id="menuSigStatus"></span>
+                </div>
+            </div>
+            <nav class="flex-1 overflow-y-auto py-3">
+                <div class="px-5 mb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Settings</div>
+                <ul class="space-y-1 px-2 text-sm font-semibold text-gray-700">
+                    <li><button onclick="openFSModal('updateProfileModal')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>Update Details</button></li>
+                    <li><button onclick="openFSModal('uploadSigModal')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>Upload E-Signature</button></li>
+                    <li><button onclick="openFSModal('uploadAvatarModal')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>Upload Profile Photo</button></li>
+                    <li><button onclick="openFSModal('updatePasswordModal')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>Change Password</button></li>
+                    <li id="logoUploadSection" class="hidden"><button onclick="openFSModal('uploadLogosModal')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>Manage Logos</button></li>
+                </ul>
+            </nav>
+            <div class="p-3 border-t border-gray-100 bg-gray-50">
+                <button onclick="logout()" class="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2 rounded-lg transition border border-red-100 shadow-sm flex items-center justify-center gap-2 text-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Sign Out
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto p-3 sm:p-5 w-full bg-gray-100">
+            <div class="max-w-6xl mx-auto w-full pb-40">
+
+                <div id="dashboardView" class="app-view block">
+                    <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4 bg-white p-2.5 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex bg-gray-100 p-1.5 rounded-lg w-full xl:w-auto overflow-x-auto">
+                            <button id="dash-btn-all"       class="tab-btn flex-1 min-w-[80px] py-1.5 px-3 text-xs font-bold text-gray-500 rounded transition hover:bg-gray-200"                        onclick="switchDashTab('all')">All</button>
+                            <button id="dash-btn-active"    class="tab-btn active flex-1 min-w-[80px] py-1.5 px-3 text-xs font-bold text-gray-500 rounded transition bg-white text-indigo-600 shadow-sm" onclick="switchDashTab('active')">In Progress</button>
+                            <button id="dash-btn-completed" class="tab-btn flex-1 min-w-[80px] py-1.5 px-3 text-xs font-bold text-gray-500 rounded transition hover:bg-gray-200"                        onclick="switchDashTab('completed')">Completed</button>
+                            <button id="dash-btn-taxable"   class="tab-btn hidden flex-1 min-w-[80px] py-1.5 px-3 text-xs font-bold text-gray-500 rounded transition hover:bg-gray-200"                onclick="switchDashTab('taxable')">Group B</button>
+                        </div>
+                        <div class="flex items-center gap-2 w-full xl:w-auto flex-wrap sm:flex-nowrap">
+                            <span class="text-xs font-bold text-gray-500 whitespace-nowrap pl-1 hidden sm:inline">Completion Date:</span>
+                            <div class="flex items-center gap-1.5 flex-1 min-w-0">
+                                <input type="date" id="dashStartDate" class="flex-1 min-w-0 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500 transition cursor-pointer" onchange="renderDashboardUI()">
+                                <span class="text-xs font-bold text-gray-400 shrink-0">to</span>
+                                <input type="date" id="dashEndDate" class="flex-1 min-w-0 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500 transition cursor-pointer" onchange="renderDashboardUI()">
+                                <button onclick="clearDashFilters()" class="shrink-0 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition border border-transparent hover:border-red-100" title="Clear Filters">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="adminDashboard" class="hidden">
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 text-center cursor-pointer hover:shadow-md hover:border-emerald-200 transition relative group" onclick="openFSModal('grossRevModal')">
+                                <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition"><svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></div>
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 group-hover:text-emerald-500 transition">Gross Revenue</p><h2 id="dashGrossRev" class="text-xl sm:text-2xl font-black text-emerald-600 truncate">₱0.00</h2>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 text-center cursor-pointer hover:shadow-md hover:border-red-200 transition relative group" onclick="openFSModal('projExpModal')">
+                                <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition"><svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></div>
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 group-hover:text-red-500 transition" title="Includes Agent Payouts & Taxes">Project Expenses</p><h2 id="dashProjExp" class="text-xl sm:text-2xl font-black text-red-500 truncate">₱0.00</h2>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 text-center cursor-pointer hover:shadow-md hover:border-orange-200 transition relative group" onclick="openFSModal('fixedCostListModal')">
+                                <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition"><svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg></div>
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 group-hover:text-orange-500 transition">Fixed Costs</p><h2 id="dashFixedCosts" class="text-xl sm:text-2xl font-black text-orange-600 truncate">₱0.00</h2>
+                            </div>
+                            <div class="bg-indigo-50 p-4 rounded-xl shadow-sm border border-indigo-200 text-center"><p class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Net Income</p><h2 id="dashNetIncome" class="text-xl sm:text-2xl font-black text-indigo-700 truncate">₱0.00</h2></div>
+                        </div>
+                    </div>
+
+                    <div id="agentDashboard" class="hidden">
+                        <div class="grid grid-cols-1 gap-3 mb-6 max-w-xs">
+                            <div class="bg-emerald-50 p-4 rounded-xl shadow-sm border border-emerald-200 text-center">
+                                <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">My Gross Share</p>
+                                <h2 id="agentGrossShare" class="text-2xl sm:text-3xl font-black text-emerald-700 truncate">₱0.00</h2>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between mb-3 ml-1">
+                        <h2 class="text-sm font-bold text-gray-800">Project Breakdowns</h2>
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleAmountVisibility()" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition border border-transparent hover:border-indigo-100" title="Hide/Show Amounts">
+                                <svg class="privacy-eye-icon w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                <svg class="privacy-eye-off-icon w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
+                            </button>
+                            <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+                                <button id="projViewToggleGrid" onclick="setProjectViewMode('grid')" class="p-1.5 rounded bg-white text-indigo-600 shadow-sm border border-gray-200 transition" title="Grid View">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                                </button>
+                                <button id="projViewToggleList" onclick="setProjectViewMode('list')" class="p-1.5 rounded text-gray-400 hover:text-gray-600 transition" title="List View">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="dashProjectsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+
+                <div id="quotationsView" class="app-view hidden">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="relative flex-1">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></div>
+                            <input type="text" id="searchBar" onkeyup="filterQuotations()" class="w-full pl-10 pr-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm" placeholder="Search customer or quotation #...">
+                        </div>
+                        <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-lg shrink-0">
+                            <button id="viewToggleGrid" onclick="setQuoteViewMode('grid')" class="p-1.5 rounded bg-white text-indigo-600 shadow-sm border border-gray-200 transition" title="Grid View">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                            </button>
+                            <button id="viewToggleList" onclick="setQuoteViewMode('list')" class="p-1.5 rounded text-gray-400 hover:text-gray-600 transition" title="List View">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex bg-gray-100 p-1 rounded-lg mb-4 w-full overflow-x-auto whitespace-nowrap">
+                        <button onclick="switchQuoteTab('All')"      id="quote-btn-All"      class="tab-btn-quote active flex-1 min-w-[70px] py-1.5 px-3 text-xs font-bold rounded transition bg-white text-indigo-600 shadow-sm">All</button>
+                        <button onclick="switchQuoteTab('Sent')"     id="quote-btn-Sent"     class="tab-btn-quote flex-1 min-w-[70px] py-1.5 px-3 text-xs font-bold text-gray-500 rounded transition hover:bg-gray-200">Sent</button>
+                        <button onclick="switchQuoteTab('Approved')" id="quote-btn-Approved" class="tab-btn-quote flex-1 min-w-[70px] py-1.5 px-3 text-xs font-bold text-gray-500 rounded transition hover:bg-gray-200">Approved</button>
+                        <button onclick="switchQuoteTab('Rejected')" id="quote-btn-Rejected" class="tab-btn-quote flex-1 min-w-[70px] py-1.5 px-3 text-xs font-bold text-gray-500 rounded transition hover:bg-gray-200">Rejected</button>
+                        <button onclick="switchQuoteTab('Deleted')"  id="quote-btn-Deleted"  class="tab-btn-quote hidden flex-1 min-w-[70px] py-1.5 px-3 text-xs font-bold text-red-500 rounded transition hover:bg-red-100">Deleted</button>
+                    </div>
+                    <div id="quotationCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start min-h-[75vh]"></div>
+                    <div id="quotePagination" class="flex justify-between items-center mt-4">
+                        <button class="bg-white border border-gray-300 text-gray-700 font-bold py-1.5 px-4 rounded-md hidden text-xs" id="prevQuoteBtn" onclick="changeQuotePage(-1)">Previous</button>
+                        <button class="bg-white border border-gray-300 text-gray-700 font-bold py-1.5 px-4 rounded-md hidden ml-auto text-xs" id="nextQuoteBtn" onclick="changeQuotePage(1)">Next</button>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <div id="bottomNavContainer" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center w-full max-w-md px-4 pointer-events-none">
+            
+            <div id="fabMenu" class="hidden flex-col gap-2 items-center transition-opacity pointer-events-auto w-full px-5" style="margin-bottom: calc(22px + 4px);">
+                <button onclick="openNewQuotationModal(); toggleFAB();" class="w-full justify-center bg-white text-indigo-700 shadow-xl border border-gray-100 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-50 text-xs transition-colors">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    New Quotation
+                </button>
+                <button onclick="openFSModal('newProjectModal'); toggleFAB();" class="w-full justify-center bg-white text-indigo-700 shadow-xl border border-gray-100 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-50 text-xs transition-colors">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    New Project
+                </button>
+            </div>
+
+            <div class="relative flex items-center justify-between bg-white/95 backdrop-blur-xl px-2.5 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-200 pointer-events-auto w-full" style="height: 48px;">
+                
+                <button onclick="navigateTo('/quotations')" id="menu-quotations" class="menu-link flex-1 flex justify-center items-center gap-1.5 px-3 rounded-full text-xs font-semibold transition-all duration-300 text-gray-500 hover:bg-gray-100 h-9">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    <span class="truncate">Quotations</span>
+                </button>
+
+                <div class="shrink-0 mx-2 relative z-10 pointer-events-none" style="height: 80px; display: flex; align-items: center;">
+                    <button onclick="toggleFAB()" id="fabBtn" class="bg-white hover:bg-gray-50 text-indigo-600 rounded-full shadow-[0_4px_20px_rgb(0,0,0,0.15)] border border-gray-200 transform transition-transform focus:outline-none pointer-events-auto" style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; margin-bottom: 22px;">
+                        <svg id="fabIcon" class="w-7 h-7 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                    </button>
+                </div>
+
+                <button onclick="navigateTo('/dashboard')" id="menu-dashboard" class="menu-link active-link bg-indigo-50 text-indigo-700 flex-1 flex justify-center items-center gap-1.5 px-3 rounded-full text-xs font-bold transition-all duration-300 h-9">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                    <span class="truncate">Dashboard</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="ledgerBackdrop" class="hidden fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[999]" onclick="closeLedgerModal()"></div>
+
+    <div id="ledgerModal" class="hidden fixed inset-0 bg-white z-[1000] flex flex-col shadow-2xl h-full w-full">
+        <div class="bg-white border-b border-gray-100 px-3 pt-3 pb-3 sticky top-0 z-20 shadow-sm">
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                    <button onclick="closeLedgerModal()" class="shrink-0 p-1.5 rounded-full hover:bg-gray-100 text-gray-600 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                    <h2 id="mProjName" class="text-sm sm:text-base font-bold truncate text-gray-900">Project Name</h2>
+                </div>
+                <button onclick="toggleAmountVisibility()" class="shrink-0 p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition" title="Hide/Show Amounts">
+                    <svg class="privacy-eye-icon w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                    <svg class="privacy-eye-off-icon w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto w-full p-3 sm:p-5 bg-gray-50">
+            <div class="max-w-3xl mx-auto w-full pb-28">
+                <div class="flex bg-gray-200 p-1 rounded-lg mb-4 shadow-inner max-w-sm mx-auto">
+                    <button id="btn-profit" class="tab-btn active flex-1 py-1.5 text-xs font-bold text-gray-500 rounded transition" onclick="switchLedgerTab('profit')">Profit</button>
+                    <button id="btn-cash"   class="tab-btn flex-1 py-1.5 text-xs font-bold text-gray-500 rounded transition" onclick="switchLedgerTab('cash')">Cash Flow</button>
+                </div>
+                <div id="view-profit" class="tab-content active space-y-4">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-3 flex gap-3 items-start">
+                        <div class="relative shrink-0 w-20 h-20 sm:w-24 sm:h-24">
+                            <img id="ledgerThumbImg" src="" class="w-full h-full object-cover rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:opacity-90 transition" onclick="openFSModal('imageModal'); document.getElementById('modalImageSrc').src=this.src" title="View image">
+                            <button id="ledgerThumbUploadBtn" onclick="triggerLedgerThumbUpload()" class="hidden absolute bottom-0.5 right-0.5 bg-white/90 p-1 rounded-md hover:bg-white shadow border border-gray-200 text-gray-600 transition" title="Change thumbnail">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            </button>
+                        </div>
+                        <div class="flex-1 flex flex-col gap-2 justify-center">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-gray-500 w-16 shrink-0">Status:</span>
+                                <select id="ledgerStatusSelect" class="status-badge status-InProgress text-xs" onchange="toggleProjectStatus(this.value)">
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="Completed">Completed</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-gray-500 w-16 shrink-0">Tax:</span>
+                                <label class="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-orange-700 bg-orange-50 px-2.5 py-1.5 rounded-md border border-orange-200 shadow-sm transition hover:bg-orange-100">
+                                    <input type="checkbox" id="govDueCheck" class="w-3.5 h-3.5 rounded border-orange-300 text-orange-600 focus:ring-orange-500" onchange="toggleTaxPreference()"> Add 8% Tax
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white border p-4 rounded-xl text-center shadow-sm">
+                        <p id="ledgerNetProfitLabel" class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Net Project Profit</p>
+                        <h2 id="topNetProfit" class="text-2xl sm:text-3xl font-black text-emerald-600">₱0.00</h2>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                            <thead><tr class="bg-gray-50 border-b uppercase text-gray-500"><th class="px-3 py-2 font-bold whitespace-nowrap">Date</th><th class="px-3 py-2 font-bold whitespace-nowrap">Type</th><th class="px-3 py-2 font-bold w-1/2">Description</th><th class="px-3 py-2 font-bold text-right whitespace-nowrap">Amount</th></tr></thead>
+                            <tbody id="ledgerBody" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                    <div id="shareDisplay" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+                </div>
+                <div id="view-cash" class="tab-content space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-white border p-4 rounded-xl text-center shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Cash Balance</p><h2 id="totalCashBal" class="text-xl sm:text-2xl font-black text-indigo-600">₱0.00</h2></div>
+                        <div class="bg-white border p-4 rounded-xl text-center shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Unpaid Balance</p><h2 id="unpaidBal" class="text-xl sm:text-2xl font-black text-orange-600">₱0.00</h2></div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                            <thead><tr class="bg-gray-50 border-b uppercase text-gray-500"><th class="px-3 py-2 font-bold whitespace-nowrap">Date</th><th class="px-3 py-2 font-bold w-1/2">Description</th><th class="px-3 py-2 font-bold text-right text-emerald-600 whitespace-nowrap">Dagdag</th><th class="px-3 py-2 font-bold text-right text-red-600 whitespace-nowrap">Bawas</th></tr></thead>
+                            <tbody id="cashBody" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="ledgerBottomNav" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[1001] px-4 w-full max-w-md">
+        <div class="flex items-center justify-between bg-white/95 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-200 w-full px-3" style="height: 52px;">
+            <button id="ledgerNavPrev" onclick="LedgerNav.navigate(-1)" class="flex items-center justify-center gap-1 px-3 h-9 rounded-full text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition text-xs font-bold" title="Previous Project">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                <span class="hidden sm:inline">Prev</span>
+            </button>
+
+            <button id="ledgerFAB"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-[0_4px_20px_rgba(79,70,229,0.45)] border border-indigo-500 focus:outline-none transition-transform active:scale-95 flex items-center justify-center"
+                style="width: 52px; height: 52px; margin-bottom: 20px;">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+            </button>
+
+            <div class="flex items-center gap-1">
+                <span id="ledgerNavCounter" class="text-gray-400 text-[10px] font-bold min-w-[32px] text-center"></span>
+                <button id="ledgerNavNext" onclick="LedgerNav.navigate(1)" class="flex items-center justify-center gap-1 px-3 h-9 rounded-full text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition text-xs font-bold" title="Next Project">
+                    <span class="hidden sm:inline">Next</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="globalThumbInput" accept="image/*" class="hidden" onchange="handleThumbUpload(event)">
+    <input type="file" id="ledgerThumbInput" accept="image/*" class="hidden" onchange="handleLedgerThumbUpload(event)">
+    <input type="hidden" id="uploadThumbTargetProject">
+
+    <script src="js/components.js"></script>
+    <script src="js/globals.js"></script>
+    <script src="js/router.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/privacy.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/project.js"></script>
+    <script src="js/ledger.js"></script>
+    <script src="js/customer.js"></script>
+    <script src="js/quotation-form.js"></script>
+    <script src="js/quotation-history.js"></script>
+    <script src="js/quotation_pdf.js"></script>
+</body>
+</html>
