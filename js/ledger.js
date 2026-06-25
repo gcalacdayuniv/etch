@@ -4,12 +4,9 @@
 // ==========================================================
 
 // ==========================================
-// LEDGER NAVIGATION (Arrow Keys + Swipe)
+// LEDGER NAVIGATION (Arrow Keys)
 // ==========================================
 const LedgerNav = {
-    _touchStartX: 0,
-    _touchStartY: 0,
-
     currentIndex() {
         if (!currentProject || !allProjects) return -1;
         return allProjects.findIndex(p => p.name === currentProject.name);
@@ -67,22 +64,6 @@ const LedgerNav = {
             if (e.key === 'ArrowLeft') this.navigate(-1);
             if (e.key === 'ArrowRight') this.navigate(1);
         });
-
-        const modal = document.getElementById('ledgerModal');
-        if (!modal) return;
-
-        modal.addEventListener('touchstart', (e) => {
-            this._touchStartX = e.touches[0].clientX;
-            this._touchStartY = e.touches[0].clientY;
-        }, { passive: true });
-
-        modal.addEventListener('touchend', (e) => {
-            const dx = e.changedTouches[0].clientX - this._touchStartX;
-            const dy = e.changedTouches[0].clientY - this._touchStartY;
-            if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-                this.navigate(dx < 0 ? 1 : -1);
-            }
-        }, { passive: true });
     }
 };
 
