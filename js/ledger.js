@@ -309,40 +309,66 @@ function refreshLedgerCalculation() {
     }
     document.getElementById('shareDisplay').innerHTML = shareHTML;
 
-    // Cash Flow (Unchanged logic, keeping Types inline)
-    let cashRows = "", runningCashBal = 0, totalPayments = 0;
-    const cashFlowItems = p.transactions.filter(t => ['Payment', 'Abono', 'Expense', 'Deduction'].includes(t.type));
+    // --- CASH FLOW SECTION ---
+    let cashRows = "";
+    let runningCashBal = 0;
+    let totalPayments = 0;
+    
+    const payments = [];
+    const abonos = [];
+    const expensesCash = [];
+    const deductions = [];
 
-    if (cashFlowItems.length === 0) {
-        cashRows = "<tr><td colspan='3' class='text-center py-6 text-gray-500 font-semibold'>No cash transactions.</td></tr>";
-    } else {
-        cashFlowItems.forEach(t => {
-            const amt = Number(t.amount);
-            let dagdagStr = "-", bawasStr = "-";
-            if (t.type === 'Payment' || t.type === 'Abono') {
-                runningCashBal += amt;
-                if (t.type === 'Payment') totalPayments += amt;
-                dagdagStr = fmt(amt);
-            } else {
-                runningCashBal -= amt;
-                bawasStr = fmt(amt);
-            }
-            
+    p.transactions.forEach(t => {
+        if (!['Payment', 'Abono', 'Expense', 'Deduction'].includes(t.type)) return;
+        
+        const amt = Number(t.amount);
+        if (t.type === 'Payment' || t.type === 'Abono') {
+            runningCashBal += amt;
+            if (t.type === 'Payment') { totalPayments += amt; payments.push(t); }
+            if (t.type === 'Abono') abonos.push(t);
+        } else {
+            runningCashBal -= amt;
+            if (t.type === 'Expense') expensesCash.push(t);
+            if (t.type === 'Deduction') deductions.push(t);
+        }
+    });
+
+    const renderCashGroup = (title, items, isPositive) => {
+        if (items.length === 0) return "";
+        const colorClass = isPositive ? 'emerald' : 'red';
+        let html = `<tr><td colspan="3" class="px-2 py-1.5 bg-${colorClass}-50 text-${colorClass}-800 font-bold text-xs uppercase tracking-wide border-y border-${colorClass}-100">${title}</td></tr>`;
+        
+        items.forEach(t => {
             let trClickAttr = "", trStyleAttr = "", iconHtml = "";
             if (t.receipt_url) {
                 const imgUrl = formatImageUrl(t.receipt_url);
                 trClickAttr = `onclick="openFSModal('imageModal'); document.getElementById('modalImageSrc').src='${imgUrl}'" title="View Receipt"`;
-                trStyleAttr = "cursor-pointer hover:bg-indigo-50 transition";
-                iconHtml = ` <svg class="w-4 h-4 inline text-indigo-500 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`;
+                trStyleAttr = `cursor-pointer hover:bg-${colorClass}-50 transition`;
+                iconHtml = ` <svg class="w-4 h-4 inline text-${colorClass}-500 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`;
             }
             const dt = new Date(t.created_at).toISOString().split('T')[0];
-            cashRows += `<tr ${trClickAttr} class="${trStyleAttr} border-b border-gray-50">
+            const amtStr = fmt(Number(t.amount));
+            const displayAmt = isPositive ? `<span class="text-emerald-700 font-black">${amtStr}</span>` : `<span class="text-red-500 font-bold">-${amtStr}</span>`;
+
+            html += `<tr ${trClickAttr} class="${trStyleAttr} border-b border-gray-50">
                 <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-500 align-top">${dt}</td>
-                <td class="px-2 py-2 text-gray-700 w-full whitespace-normal break-words leading-tight text-sm"><b class="text-indigo-600 text-[10px] uppercase tracking-wide block mb-0.5">${t.type}</b>${t.description}${iconHtml}</td>
-                <td class="px-2 py-2 text-emerald-600 text-right font-black whitespace-nowrap align-top">${dagdagStr !== "-" ? dagdagStr : `<span class="text-red-500 font-bold">${bawasStr}</span>`}</td>
+                <td class="px-2 py-2 text-gray-700 w-full whitespace-normal break-words leading-tight text-sm">${t.description}${iconHtml}</td>
+                <td class="px-2 py-2 text-right whitespace-nowrap align-top">${displayAmt}</td>
             </tr>`;
         });
+        return html;
+    };
+
+    cashRows += renderCashGroup('Payments', payments, true);
+    cashRows += renderCashGroup('Abono', abonos, true);
+    cashRows += renderCashGroup('Expenses', expensesCash, false);
+    cashRows += renderCashGroup('Deductions', deductions, false);
+
+    if (cashRows === "") {
+        cashRows = "<tr><td colspan='3' class='text-center py-6 text-gray-500 font-semibold'>No cash transactions.</td></tr>";
     }
+
     document.getElementById('cashBody').innerHTML = cashRows;
     document.getElementById('totalCashBal').innerHTML = fmt(runningCashBal);
     document.getElementById('unpaidBal').innerHTML = fmt(totalSales - totalPayments);
