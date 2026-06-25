@@ -85,24 +85,21 @@ async function openLedger(pName) {
     document.getElementById('topNetProfit').innerHTML = '<div class="skeleton h-8 w-32 mx-auto rounded"></div>';
     document.getElementById('totalCashBal').innerHTML = '<div class="skeleton h-6 w-24 mx-auto rounded"></div>';
     document.getElementById('unpaidBal').innerHTML = '<div class="skeleton h-6 w-24 mx-auto rounded"></div>';
-    document.getElementById('ledgerBody').innerHTML = '<tr><td colspan="4" class="p-4"><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-3/4"></div></td></tr>';
+    document.getElementById('ledgerBody').innerHTML = '<tr><td colspan="3" class="p-4"><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-3/4"></div></td></tr>';
     document.getElementById('shareDisplay').innerHTML = '<div class="skeleton h-24 w-full mt-3 rounded-xl col-span-1 md:col-span-2"></div>';
-    document.getElementById('cashBody').innerHTML = '<tr><td colspan="4" class="p-4"><div class="skeleton h-4 w-full"></div></td></tr>';
+    document.getElementById('cashBody').innerHTML = '<tr><td colspan="3" class="p-4"><div class="skeleton h-4 w-full"></div></td></tr>';
     document.getElementById('ledgerThumbImg').src = typeof sessionFallbackThumb !== 'undefined' ? sessionFallbackThumb : '';
     document.getElementById('ledgerThumbUploadBtn').classList.add('hidden');
 
-    // Show backdrop
     const backdrop = document.getElementById('ledgerBackdrop');
     if (backdrop) {
         backdrop.classList.remove('hidden');
     }
 
-    // Show modal as bottom sheet
     const modal = document.getElementById('ledgerModal');
     if (modal) {
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
-        // Animate in
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 modal.classList.add('ledger-sheet-open');
@@ -223,41 +220,69 @@ function refreshLedgerCalculation() {
     let rows = "";
     let totalSales = 0, totalExpenses = 0;
 
-    const mainLedgerItems = p.transactions.filter(t => t.type === 'Sales' || t.type === 'Expense').sort((a, b) => (a.type === 'Sales' ? -1 : 1));
+    const salesItems = p.transactions.filter(t => t.type === 'Sales');
+    const expenseItems = p.transactions.filter(t => t.type === 'Expense');
 
-    mainLedgerItems.forEach(t => {
-        const amt = Number(t.amount);
-        if (t.type === 'Sales') totalSales += amt;
-        else totalExpenses += amt;
+    // --- SALES SECTION ---
+    if (salesItems.length > 0) {
+        rows += `<tr><td colspan="3" class="px-2 py-1.5 bg-emerald-50 text-emerald-800 font-bold text-xs uppercase tracking-wide border-y border-emerald-100">Sales & Billings</td></tr>`;
+        salesItems.forEach(t => {
+            const amt = Number(t.amount);
+            totalSales += amt;
+            let trClickAttr = "", trStyleAttr = "", iconHtml = "";
+            if (t.receipt_url) {
+                const imgUrl = formatImageUrl(t.receipt_url);
+                trClickAttr = `onclick="openFSModal('imageModal'); document.getElementById('modalImageSrc').src='${imgUrl}'" title="View Receipt"`;
+                trStyleAttr = "cursor-pointer hover:bg-emerald-50 transition";
+                iconHtml = ` <svg class="w-4 h-4 inline text-emerald-500 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`;
+            }
+            const dt = new Date(t.created_at).toISOString().split('T')[0];
+            rows += `<tr ${trClickAttr} class="${trStyleAttr} border-b border-gray-50">
+                <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-500 align-top">${dt}</td>
+                <td class="px-2 py-2 text-gray-700 w-full whitespace-normal break-words leading-tight text-sm">${t.description}${iconHtml}</td>
+                <td class="px-2 py-2 text-right font-bold text-emerald-700 whitespace-nowrap align-top">${fmt(amt)}</td>
+            </tr>`;
+        });
+    }
 
-        let trClickAttr = "", trStyleAttr = "", iconHtml = "";
-        if (t.receipt_url) {
-            const imgUrl = formatImageUrl(t.receipt_url);
-            trClickAttr = `onclick="openFSModal('imageModal'); document.getElementById('modalImageSrc').src='${imgUrl}'" title="View Receipt"`;
-            trStyleAttr = "cursor-pointer hover:bg-indigo-50 transition";
-            iconHtml = ` <svg class="w-4 h-4 inline text-indigo-500 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`;
-        }
-        const dt = new Date(t.created_at).toISOString().split('T')[0];
-        const typeClass = t.type === 'Sales' ? 'text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded text-xs' : 'text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded text-xs';
-        rows += `<tr ${trClickAttr} class="${trStyleAttr} border-b border-gray-50">
-            <td class="px-3 py-2 whitespace-nowrap">${dt}</td>
-            <td class="px-3 py-2 whitespace-nowrap"><span class="${typeClass}">${t.type}</span></td>
-            <td class="px-3 py-2 text-gray-700 w-1/2 whitespace-normal break-words leading-tight">${t.description}${iconHtml}</td>
-            <td class="px-3 py-2 text-right font-bold text-gray-800 whitespace-nowrap">${fmt(amt)}</td>
-        </tr>`;
-    });
-
+    // --- EXPENSES SECTION ---
     const isGovDue = document.getElementById('govDueCheck').checked;
     const govDueAmt = isGovDue ? (totalSales * 0.08) : 0;
-    if (isGovDue) {
-        rows += `<tr class="border-b border-gray-50">
-            <td class="px-3 py-2">-</td>
-            <td class="px-3 py-2"><span class="text-orange-600 font-bold bg-orange-50 px-2 py-0.5 rounded text-xs">Expense</span></td>
-            <td class="px-3 py-2 text-gray-500 italic w-1/2 whitespace-normal break-words leading-tight">Tax (8%)</td>
-            <td class="px-3 py-2 text-right font-bold text-gray-500">${fmt(govDueAmt)}</td>
-        </tr>`;
-        totalExpenses += govDueAmt;
+    
+    if (expenseItems.length > 0 || isGovDue) {
+        rows += `<tr><td colspan="3" class="px-2 py-1.5 bg-red-50 text-red-800 font-bold text-xs uppercase tracking-wide border-y border-red-100">Expenses</td></tr>`;
+        expenseItems.forEach(t => {
+            const amt = Number(t.amount);
+            totalExpenses += amt;
+            let trClickAttr = "", trStyleAttr = "", iconHtml = "";
+            if (t.receipt_url) {
+                const imgUrl = formatImageUrl(t.receipt_url);
+                trClickAttr = `onclick="openFSModal('imageModal'); document.getElementById('modalImageSrc').src='${imgUrl}'" title="View Receipt"`;
+                trStyleAttr = "cursor-pointer hover:bg-red-50 transition";
+                iconHtml = ` <svg class="w-4 h-4 inline text-red-500 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`;
+            }
+            const dt = new Date(t.created_at).toISOString().split('T')[0];
+            rows += `<tr ${trClickAttr} class="${trStyleAttr} border-b border-gray-50">
+                <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-500 align-top">${dt}</td>
+                <td class="px-2 py-2 text-gray-700 w-full whitespace-normal break-words leading-tight text-sm">${t.description}${iconHtml}</td>
+                <td class="px-2 py-2 text-right font-bold text-gray-800 whitespace-nowrap align-top">${fmt(amt)}</td>
+            </tr>`;
+        });
+
+        if (isGovDue) {
+            rows += `<tr class="border-b border-gray-50 bg-orange-50/50">
+                <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-400 align-top">-</td>
+                <td class="px-2 py-2 text-gray-500 italic w-full whitespace-normal break-words leading-tight text-sm">Tax (8%)</td>
+                <td class="px-2 py-2 text-right font-bold text-gray-500 whitespace-nowrap align-top">${fmt(govDueAmt)}</td>
+            </tr>`;
+            totalExpenses += govDueAmt;
+        }
     }
+
+    if (rows === "") {
+        rows = "<tr><td colspan='3' class='text-center py-6 text-gray-500 font-semibold'>No main ledger records.</td></tr>";
+    }
+
     document.getElementById('ledgerBody').innerHTML = rows;
 
     const netBeforeShares = totalSales - totalExpenses;
@@ -284,12 +309,12 @@ function refreshLedgerCalculation() {
     }
     document.getElementById('shareDisplay').innerHTML = shareHTML;
 
-    // Cash Flow
+    // Cash Flow (Unchanged logic, keeping Types inline)
     let cashRows = "", runningCashBal = 0, totalPayments = 0;
     const cashFlowItems = p.transactions.filter(t => ['Payment', 'Abono', 'Expense', 'Deduction'].includes(t.type));
 
     if (cashFlowItems.length === 0) {
-        cashRows = "<tr><td colspan='4' class='text-center py-6 text-gray-500 font-semibold'>No cash transactions.</td></tr>";
+        cashRows = "<tr><td colspan='3' class='text-center py-6 text-gray-500 font-semibold'>No cash transactions.</td></tr>";
     } else {
         cashFlowItems.forEach(t => {
             const amt = Number(t.amount);
@@ -312,10 +337,9 @@ function refreshLedgerCalculation() {
             }
             const dt = new Date(t.created_at).toISOString().split('T')[0];
             cashRows += `<tr ${trClickAttr} class="${trStyleAttr} border-b border-gray-50">
-                <td class="px-3 py-2 whitespace-nowrap">${dt}</td>
-                <td class="px-3 py-2 text-gray-700 w-1/2 whitespace-normal break-words leading-tight"><b>[${t.type}]</b> ${t.description}${iconHtml}</td>
-                <td class="px-3 py-2 text-emerald-600 text-right font-black whitespace-nowrap">${dagdagStr}</td>
-                <td class="px-3 py-2 text-red-500 text-right font-bold whitespace-nowrap">${bawasStr}</td>
+                <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-500 align-top">${dt}</td>
+                <td class="px-2 py-2 text-gray-700 w-full whitespace-normal break-words leading-tight text-sm"><b class="text-indigo-600 text-[10px] uppercase tracking-wide block mb-0.5">${t.type}</b>${t.description}${iconHtml}</td>
+                <td class="px-2 py-2 text-emerald-600 text-right font-black whitespace-nowrap align-top">${dagdagStr !== "-" ? dagdagStr : `<span class="text-red-500 font-bold">${bawasStr}</span>`}</td>
             </tr>`;
         });
     }
@@ -351,8 +375,6 @@ function _generatePayoutHTML(p, targetAgentId, targetAgentName, grossShare) {
 
 let _recordEntries = [];
 
-// Opens the record modal WITHOUT going through openFSModal/closeFSModal
-// to prevent those utilities from hiding the ledger modal underneath.
 function _openRecordForm(p) {
     const hasCoAgent = p.coAgent && p.coAgent.trim() !== "";
     document.getElementById('recProjName').innerText = p.name;
@@ -370,16 +392,13 @@ function _openRecordForm(p) {
         document.getElementById('recAgent').value = sessionId;
     }
     
-    // Reset multi-entry state
     _recordEntries = [];
     document.getElementById('recordEntriesContainer').innerHTML = '';
     _addRecordEntry();
 
-    // Directly show the record modal — bypass openFSModal to avoid scroll/overflow side-effects
     const recordModal = document.getElementById('recordModal');
     if (recordModal) recordModal.classList.remove('hidden');
 
-    // Ensure ledger stays visible and body stays locked
     const lModal = document.getElementById('ledgerModal');
     if (lModal) {
         lModal.classList.remove('hidden');
@@ -388,12 +407,10 @@ function _openRecordForm(p) {
     document.body.style.overflow = 'hidden';
 }
 
-// Closes the record modal and ensures ledger is still visible
 function _closeRecordModal() {
     const recordModal = document.getElementById('recordModal');
     if (recordModal) recordModal.classList.add('hidden');
 
-    // Keep ledger visible
     const lModal = document.getElementById('ledgerModal');
     if (lModal) {
         lModal.classList.remove('hidden');
@@ -471,7 +488,6 @@ function handleEntryTypeChange(idx) {
     }
 }
 
-// Legacy handler for backward compat
 function handleRecordTypeChange() {
     handleEntryTypeChange(0);
 }
@@ -510,9 +526,9 @@ function openSubLedger(type, targetAgentId, targetAgentName) {
             }
             const dt = new Date(i.created_at).toISOString().split('T')[0];
             rows += `<tr ${trClickAttr} class="${trStyleAttr} border-b border-gray-100">
-                <td class="px-2 py-2 whitespace-nowrap">${dt}</td>
-                <td class="px-2 py-2 w-1/2 whitespace-normal break-words leading-tight">${i.description}${iconHtml}</td>
-                <td class="px-2 py-2 text-right font-bold text-gray-700 whitespace-nowrap">${fmt(Number(i.amount))}</td>
+                <td class="px-2 py-2 whitespace-nowrap text-xs align-top">${dt}</td>
+                <td class="px-2 py-2 w-full whitespace-normal break-words leading-tight text-sm">${i.description}${iconHtml}</td>
+                <td class="px-2 py-2 text-right font-bold text-gray-700 whitespace-nowrap align-top">${fmt(Number(i.amount))}</td>
             </tr>`;
         });
     }
@@ -578,8 +594,8 @@ document.getElementById('recordForm')?.addEventListener('submit', async (e) => {
 
     if (allSuccess) {
         _closeRecordModal();
-        document.getElementById('ledgerBody').innerHTML = '<tr><td colspan="4" class="p-4"><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-full"></div></td></tr>';
-        document.getElementById('cashBody').innerHTML = '<tr><td colspan="4" class="p-4"><div class="skeleton h-4 w-full"></div></td></tr>';
+        document.getElementById('ledgerBody').innerHTML = '<tr><td colspan="3" class="p-4"><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-full"></div></td></tr>';
+        document.getElementById('cashBody').innerHTML = '<tr><td colspan="3" class="p-4"><div class="skeleton h-4 w-full"></div></td></tr>';
         await fetchAndRefreshLedger(currentProject.name);
         if (typeof fetchAndRenderDashboard === 'function') fetchAndRenderDashboard();
     } else {
@@ -587,11 +603,9 @@ document.getElementById('recordForm')?.addEventListener('submit', async (e) => {
     }
 });
 
-// Initialize swipe/keyboard listeners after DOM is ready
 document.addEventListener('DOMContentLoaded', () => LedgerNav.initListeners());
 if (document.readyState !== 'loading') LedgerNav.initListeners();
 
-// Global exports
 window.openLedger = openLedger;
 window.closeLedgerModal = closeLedgerModal;
 window.switchLedgerTab = switchLedgerTab;
