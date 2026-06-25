@@ -23,6 +23,7 @@ export default {
         // --- DASHBOARDS & FIXED COSTS ---
         case 'getDashboardData': responsePayload = await handleGetDashboardData(env.DB, data); break;
         case 'addFixedCost': responsePayload = await handleAddFixedCost(env.DB, data); break;
+        case 'ProfessionalFinanceDashboard': responsePayload = await handleProfessionalFinanceDashboard(env.DB, data); break;
 
         // --- PROJECTS & LEDGER ---
         case 'getProjectList': responsePayload = await handleGetProjects(env.DB, data); break;
@@ -536,4 +537,84 @@ async function proxyToGAS(gasUrl, originalPayload) {
     const response = await fetch(gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(originalPayload) });
     return await response.json();
   } catch (e) { return null; }
+}
+
+// ==========================================
+// FINANCIAL DASHBOARD API
+// ==========================================
+async function handleProfessionalFinanceDashboard(db, data) {
+  try {
+    const transactions = [];
+
+    // 1. Get Global Fixed Costs
+    const fixedCostsRes = await db.prepare("SELECT * FROM project_ledger WHERE project_id = 'GLOBAL' AND type = 'FixedCost'").all();
+    const fixedCosts = fixedCostsRes.results || [];
+    
+    for (const fc of fixedCosts) {
+      const dateStr = fc.created_at ? fc.created_at.substring(0, 10) : new Date().toISOString().split('T')[0];
+      
+      transactions.push({
+        id: fc.id || crypto.randomUUID(),
+        date: dateStr,
+        type: "Expense",
+        description: fc.description || "Global Fixed Cost",
+        amount: Number(Math.abs(Number(fc.amount)).toFixed(2)),
+        project_name: "Etch Signage"
+      });
+    }
+
+    // 2. Get Completed Projects and Calculate Company Net
+    const projectsRes = await db.prepare("SELECT * FROM projects WHERE status = 'Completed'").all();
+    const projects = projectsRes.results || [];
+    
+    if (projects.length > 0) {
+      const ledgerRes = await db.prepare("SELECT * FROM project_ledger WHERE project_id != 'GLOBAL'").all();
+      const allLedgers = ledgerRes.results || [];
+      
+      for (const p of projects) {
+        const txs = allLedgers.filter(l => l.project_id === p.id);
+        
+        let pSales = 0;
+        let pExp = 0;
+        
+        let lastTxDateStr = p.created_at ? p.created_at.substring(0, 10) : new Date().toISOString().split('T')[0];
+        let lastTxTime = p.created_at ? new Date(p.created_at).getTime() : Date.now();
+        
+        for (const t of txs) {
+          const amt = Number(t.amount);
+          if (t.type === 'Sales') pSales += amt;
+          else if (t.type === 'Expense') pExp += amt;
+          
+          const tTime = new Date(t.created_at).getTime();
+          if (tTime > lastTxTime) {
+            lastTxTime = tTime;
+            lastTxDateStr = t.created_at.substring(0, 10);
+          }
+        }
+        
+        const isTaxable = (p.is_taxable !== 0);
+        const taxAmt = isTaxable ? (pSales * 0.08) : 0;
+        pExp += taxAmt;
+        
+        const netBeforeShares = pSales - pExp;
+        const hasCo = p.co_agent && p.co_agent.trim() !== "";
+        const shareRatio = hasCo ? (1 / 3) : 0.5;
+        const totalAgentGrossShares = netBeforeShares * shareRatio * (hasCo ? 2 : 1);
+        const pNetToCompany = netBeforeShares - totalAgentGrossShares;
+        
+        transactions.push({
+          id: p.id || crypto.randomUUID(),
+          date: lastTxDateStr,
+          type: "Income",
+          description: p.name,
+          amount: Number(Math.abs(pNetToCompany).toFixed(2)),
+          project_name: "Etch Signage"
+        });
+      }
+    }
+
+    return { success: true, data: { transactions } };
+  } catch (e) {
+    return { success: false, message: e.toString() };
+  }
 }
