@@ -4,12 +4,9 @@
 // ==========================================================
 
 // ==========================================
-// PDF PREVIEW NAVIGATION (Arrow Keys + Swipe)
+// PDF PREVIEW NAVIGATION (Arrow Keys)
 // ==========================================
 const PDFNav = {
-    _touchStartX: 0,
-    _touchStartY: 0,
-
     _getList() {
         // Use the filtered quotation list from QuotationHistoryManager if available
         if (typeof QuotationHistoryManager !== 'undefined') {
@@ -57,23 +54,6 @@ const PDFNav = {
             if (e.key === 'ArrowLeft') this.navigate(-1);
             if (e.key === 'ArrowRight') this.navigate(1);
         });
-
-        // Touch swipe
-        const modal = document.getElementById('pdfPreviewModal');
-        if (!modal) return;
-
-        modal.addEventListener('touchstart', (e) => {
-            this._touchStartX = e.touches[0].clientX;
-            this._touchStartY = e.touches[0].clientY;
-        }, { passive: true });
-
-        modal.addEventListener('touchend', (e) => {
-            const dx = e.changedTouches[0].clientX - this._touchStartX;
-            const dy = e.changedTouches[0].clientY - this._touchStartY;
-            if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-                this.navigate(dx < 0 ? 1 : -1);
-            }
-        }, { passive: true });
     }
 };
 
