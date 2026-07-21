@@ -40,6 +40,7 @@ const AppComponents = {
                                     </div>
                                     <input type="text" id="customerTIN" name="customerTIN" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none" placeholder="TIN (Optional)">
                                     <input type="text" id="customerAddress" name="customerAddress" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none sm:col-span-2" placeholder="Full Address" required>
+                                    <input type="text" id="paymentTerms" name="paymentTerms" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none sm:col-span-2" placeholder="Terms of Payment (e.g. 50% DP, 50% upon completion)">
                                 </div>
                             </div>
                             <div class="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-gray-200">
@@ -127,11 +128,11 @@ const AppComponents = {
                                     </table>
                                 </div>
                                 <div style="width: 40%;">
-                                    <br><br>
                                     <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
                                         <tr><td style="width: 90px; font-weight: bold; padding: 12px 4px; vertical-align: top;">Date</td><td style="width: 10px; padding: 12px 4px; vertical-align: top;">:</td><td style="text-align: right; padding: 12px 4px; vertical-align: top;"><span id="pdf-q-date"></span></td></tr>
                                         <tr><td style="width: 90px; font-weight: bold; padding: 12px 4px; vertical-align: top;">Quote No.</td><td style="width: 10px; padding: 12px 4px; vertical-align: top;">:</td><td style="text-align: right; padding: 12px 4px; vertical-align: top;"><span id="pdf-q-no"></span></td></tr>
                                         <tr><td style="width: 90px; font-weight: bold; padding: 12px 4px; vertical-align: top;">Valid Until</td><td style="width: 10px; padding: 12px 4px; vertical-align: top;">:</td><td style="text-align: right; padding: 12px 4px; vertical-align: top;"><span id="pdf-q-valid"></span></td></tr>
+                                        <tr><td style="width: 90px; font-weight: bold; padding: 12px 4px; vertical-align: top;">Terms of Payment</td><td style="width: 10px; padding: 12px 4px; vertical-align: top;">:</td><td style="text-align: right; padding: 12px 4px; vertical-align: top;"><span id="pdf-payment-terms"></span></td></tr>
                                     </table>
                                 </div>
                             </div>
@@ -434,6 +435,7 @@ const AppComponents = {
                                     </div>
                                     <input type="text" id="editCustomerTIN" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none" placeholder="TIN (Optional)">
                                     <input type="text" id="editCustomerAddress" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none sm:col-span-2" placeholder="Full Address" required>
+                                    <input type="text" id="editPaymentTerms" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none sm:col-span-2" placeholder="Terms of Payment (e.g. 50% DP, 50% upon completion)">
                                 </div>
                             </div>
                             <div class="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-gray-200">
