@@ -368,6 +368,7 @@ async function handleGetQuotationDetail(db, data) {
         customerName:       q.customer_name,
         customerTIN:        q.customer_tin || '',
         customerAddress:    q.customer_address || '',
+        paymentTerms:       q.payment_terms || '',
         preparedBy:         q.prepared_by,
         preparedById:       q.prepared_by_id,
         preparedByContact:  preparedByContact,
@@ -412,15 +413,16 @@ async function handleProcessForm(db, data) {
     const qNumber = `Q${today}${seq}`;
 
     await db.prepare(`
-      INSERT INTO quotations (id, quotation_number, customer_name, customer_tin, customer_address, prepared_by, prepared_by_id, status, is_deleted, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'Sent', 0, datetime('now'))
+      INSERT INTO quotations (id, quotation_number, customer_name, customer_tin, customer_address, prepared_by, prepared_by_id, status, is_deleted, created_at, payment_terms)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'Sent', 0, datetime('now'), ?)
     `).bind(
       quoteId, qNumber,
       data.customerName,
       data.customerTIN || '',
       data.customerAddress || '',
       data.preparedBy,
-      data.preparedById
+      data.preparedById,
+      data.paymentTerms || ''
     ).run();
 
     const items = data.itemDescription || [];
@@ -455,12 +457,13 @@ async function handleEditQuotation(db, data) {
 
     await db.prepare(`
       UPDATE quotations
-      SET customer_name = ?, customer_tin = ?, customer_address = ?
+      SET customer_name = ?, customer_tin = ?, customer_address = ?, payment_terms = ?
       WHERE quotation_number = ?
     `).bind(
       data.customerName,
       data.customerTIN || '',
       data.customerAddress || '',
+      data.paymentTerms || '',
       data.qNumber
     ).run();
 
