@@ -58,9 +58,10 @@ const QuotationFormManager = {
         const customerName = document.getElementById('customerName').value;
         const customerTIN = document.getElementById('customerTIN').value;
         const customerAddress = document.getElementById('customerAddress').value;
+        const paymentTerms = document.getElementById('paymentTerms').value;
 
         const data = {
-            customerName, customerTIN, customerAddress,
+            customerName, customerTIN, customerAddress, paymentTerms,
             preparedBy: sessionName,
             preparedById: sessionId,
             preparedByEmail: sessionEmail,
@@ -99,6 +100,7 @@ const QuotationFormManager = {
         document.getElementById('editCustomerName').value = d.customerName;
         document.getElementById('editCustomerTIN').value = d.customerTIN || '';
         document.getElementById('editCustomerAddress').value = d.customerAddress || '';
+        document.getElementById('editPaymentTerms').value = d.paymentTerms || '';
 
         const container = document.getElementById('editLineItemsContainer');
         container.innerHTML = '';
@@ -148,6 +150,7 @@ const QuotationFormManager = {
         const customerName = document.getElementById('editCustomerName').value;
         const customerTIN = document.getElementById('editCustomerTIN').value;
         const customerAddress = document.getElementById('editCustomerAddress').value;
+        const paymentTerms = document.getElementById('editPaymentTerms').value;
 
         const data = {
             qNumber: this.state.editingQNumber,
@@ -155,6 +158,7 @@ const QuotationFormManager = {
             customerName,
             customerTIN,
             customerAddress,
+            paymentTerms,
             itemDescription: Array.from(document.getElementsByName('editItemDescription')).map(el => el.value),
             quantity: Array.from(document.getElementsByName('editQuantity')).map(el => el.value),
             unitCost: Array.from(document.getElementsByName('editUnitCost')).map(el => el.value)
