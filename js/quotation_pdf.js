@@ -85,6 +85,7 @@ async function fetchAndPreparePDF(qNumber) {
     document.getElementById('pdf-q-date').innerText  = qDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     document.getElementById('pdf-q-no').innerText    = d.quotationNumber;
     document.getElementById('pdf-q-valid').innerText = validUntil.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    document.getElementById('pdf-payment-terms').innerText = (d.paymentTerms && d.paymentTerms.trim() !== '') ? d.paymentTerms : '-';
 
     const tbody = document.getElementById('pdf-table-body');
     tbody.innerHTML = "";
