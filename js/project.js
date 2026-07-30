@@ -26,6 +26,17 @@ function populateAgentDropdowns() {
 async function openNewProjectModal() {
     populateAgentDropdowns();
     
+    // 1. Fetch Customers and populate dropdown
+    const custRes = await apiCall('getCustomers', {});
+    if (custRes.success) {
+        const select = document.getElementById('newProjCustomer');
+        if (select) {
+            const opts = custRes.data.map(c => `<option value="${c.id}">${c.name}</option>`);
+            select.innerHTML = '<option value="">-- Select Customer --</option>' + opts.join('');
+        }
+    }
+
+    // 2. Fetch Quotations and populate dropdown
     const res = await apiCall('getUserQuotations', { agentId: sessionId, role: sessionRole });
     if (res.success) {
         const select = document.getElementById('newProjQuotation');
@@ -71,11 +82,15 @@ document.getElementById('newProjectForm')?.addEventListener('submit', async (e) 
     const coAgentId = coSelect.value || null;
     const coAgentName = coAgentId ? (coSelect.options[coSelect.selectedIndex]?.getAttribute('data-name') || coSelect.options[coSelect.selectedIndex]?.text) : null;
     
+    const customerSelect = document.getElementById('newProjCustomer');
+    const customerId = customerSelect ? customerSelect.value : null;
+
     const quotationSelect = document.getElementById('newProjQuotation');
     const quotationNumber = quotationSelect ? quotationSelect.value : null;
 
     const res = await apiCall("createProject", {
         projectName: document.getElementById('newProjName').value,
+        customerId: customerId,
         mainAgent: mainAgentName,
         mainAgentId: mainAgentId,
         coAgent: coAgentName,
