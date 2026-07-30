@@ -24,6 +24,7 @@ export default {
         case 'getDashboardData': responsePayload = await handleGetDashboardData(env.DB, data); break;
         case 'addFixedCost': responsePayload = await handleAddFixedCost(env.DB, data); break;
         case 'ProfessionalFinanceDashboard': responsePayload = await handleProfessionalFinanceDashboard(env.DB, data); break;
+        case 'getStatementOfAccount': responsePayload = await handleGetSOA(env.DB, data); break;
 
         // --- PROJECTS & LEDGER ---
         case 'getProjectList': responsePayload = await handleGetProjects(env.DB, data); break;
@@ -232,6 +233,44 @@ async function handleAddFixedCost(db, data) {
   } catch (e) { return { success: false, message: e.toString() }; }
 }
 
+async function handleGetSOA(db, data) {
+    try {
+        const query = `
+            SELECT p.id as project_id, p.name as project_name, p.invoice_number, p.invoice_date, p.due_date,
+                   q.quotation_number, c.name as customer_name, c.id as customer_id
+            FROM projects p
+            LEFT JOIN quotations q ON q.project_id = p.id
+            LEFT JOIN customers c ON q.customer_id = c.id
+            WHERE p.status = 'Delivered'
+        `;
+        const { results: deliveredProjects } = await db.prepare(query).all();
+
+        const { results: ledgers } = await db.prepare("SELECT project_id, type, amount FROM project_ledger WHERE type IN ('Sales', 'Payment')").all();
+
+        const soaList = [];
+        for (const dp of deliveredProjects) {
+            const projTxs = ledgers.filter(l => l.project_id === dp.project_id);
+            let totalSales = 0;
+            let totalPaid = 0;
+            for (const tx of projTxs) {
+                if (tx.type === 'Sales') totalSales += Number(tx.amount);
+                if (tx.type === 'Payment') totalPaid += Number(tx.amount);
+            }
+            const balance = totalSales - totalPaid;
+            if (balance > 0) {
+                soaList.push({
+                    ...dp,
+                    totalSales,
+                    totalPaid,
+                    balance,
+                    isOverdue: new Date(dp.due_date) < new Date()
+                });
+            }
+        }
+        return { success: true, data: soaList };
+    } catch (e) { return { success: false, message: e.toString() }; }
+}
+
 // ==========================================
 // SYSTEM & PROJECT LOGIC
 // ==========================================
@@ -254,8 +293,13 @@ async function handleGetProjects(db, data) {
 async function handleCreateProject(db, data) {
   const existing = await db.prepare("SELECT id FROM projects WHERE name = ?").bind(data.projectName).first();
   if (existing) return { success: false, message: "Project name already exists." };
+  const projectId = crypto.randomUUID();
   await db.prepare("INSERT INTO projects (id, name, main_agent, main_agent_id, co_agent, co_agent_id, status, is_taxable, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))")
-    .bind(crypto.randomUUID(), data.projectName, data.mainAgent, data.mainAgentId, data.coAgent || null, data.coAgentId || null, 'In Progress').run();
+    .bind(projectId, data.projectName, data.mainAgent, data.mainAgentId, data.coAgent || null, data.coAgentId || null, 'In Progress').run();
+
+  if (data.quotationNumber) {
+    await db.prepare("UPDATE quotations SET project_id = ? WHERE quotation_number = ?").bind(projectId, data.quotationNumber).run();
+  }
   return { success: true };
 }
 
@@ -302,7 +346,12 @@ async function handleAddExpense(db, env, data) {
 }
 
 async function handleUpdateProjectStatus(db, data) {
-  await db.prepare("UPDATE projects SET status = ? WHERE name = ?").bind(data.status, data.projectName).run();
+  if (data.status === 'Delivered') {
+      await db.prepare("UPDATE projects SET status = ?, invoice_number = ?, invoice_date = ?, due_date = ? WHERE name = ?")
+        .bind(data.status, data.invoiceNumber, data.invoiceDate, data.dueDate, data.projectName).run();
+  } else {
+      await db.prepare("UPDATE projects SET status = ? WHERE name = ?").bind(data.status, data.projectName).run();
+  }
   return { success: true };
 }
 
@@ -406,6 +455,13 @@ async function handleRestoreQuotation(db, data) {
 
 async function handleProcessForm(db, data) {
   try {
+    let cust = await db.prepare("SELECT id FROM customers WHERE LOWER(name) = LOWER(?)").bind(data.customerName.trim()).first();
+    let customerId = cust ? cust.id : crypto.randomUUID();
+    if (!cust) {
+        await db.prepare("INSERT INTO customers (id, name, tin, address, created_at) VALUES (?, ?, ?, ?, datetime('now'))")
+            .bind(customerId, data.customerName.trim(), data.customerTIN||'', data.customerAddress||'').run();
+    }
+
     const quoteId = crypto.randomUUID();
     const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const countRes = await db.prepare("SELECT COUNT(*) as cnt FROM quotations WHERE quotation_number LIKE ?").bind(`Q${today}%`).first();
@@ -413,8 +469,8 @@ async function handleProcessForm(db, data) {
     const qNumber = `Q${today}${seq}`;
 
     await db.prepare(`
-      INSERT INTO quotations (id, quotation_number, customer_name, customer_tin, customer_address, prepared_by, prepared_by_id, status, is_deleted, created_at, payment_terms)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'Sent', 0, datetime('now'), ?)
+      INSERT INTO quotations (id, quotation_number, customer_name, customer_tin, customer_address, prepared_by, prepared_by_id, status, is_deleted, created_at, payment_terms, customer_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'Sent', 0, datetime('now'), ?, ?)
     `).bind(
       quoteId, qNumber,
       data.customerName,
@@ -422,7 +478,8 @@ async function handleProcessForm(db, data) {
       data.customerAddress || '',
       data.preparedBy,
       data.preparedById,
-      data.paymentTerms || ''
+      data.paymentTerms || '',
+      customerId
     ).run();
 
     const items = data.itemDescription || [];
@@ -508,13 +565,11 @@ async function handleSaveCustomer(db, data) {
     const existing = await db.prepare("SELECT id FROM customers WHERE LOWER(name) = LOWER(?)").bind(name.trim()).first();
 
     if (existing) {
-      // Update existing
       await db.prepare(
         "UPDATE customers SET tin = ?, address = ? WHERE id = ?"
       ).bind((tin || '').trim(), address.trim(), existing.id).run();
       return { success: true, id: existing.id, updated: true };
     } else {
-      // Insert new
       const id = crypto.randomUUID();
       await db.prepare(
         "INSERT INTO customers (id, name, tin, address, created_by_id, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))"
@@ -527,7 +582,6 @@ async function handleSaveCustomer(db, data) {
 async function handleDeleteDbCustomer(db, data) {
   try {
     const { id, userId, pass } = data;
-    // Require password confirmation
     const auth = await db.prepare("SELECT id FROM accounts WHERE id = ? AND password = ?").bind(userId, pass).first();
     if (!auth) return { success: false, message: "Incorrect password." };
     await db.prepare("DELETE FROM customers WHERE id = ?").bind(id).run();
@@ -549,7 +603,6 @@ async function handleProfessionalFinanceDashboard(db, data) {
   try {
     const transactions = [];
 
-    // 1. Get Global Fixed Costs
     const fixedCostsRes = await db.prepare("SELECT * FROM project_ledger WHERE project_id = 'GLOBAL' AND type = 'FixedCost'").all();
     const fixedCosts = fixedCostsRes.results || [];
     
@@ -566,7 +619,6 @@ async function handleProfessionalFinanceDashboard(db, data) {
       });
     }
 
-    // 2. Get Completed Projects and Calculate Company Net
     const projectsRes = await db.prepare("SELECT * FROM projects WHERE status = 'Completed'").all();
     const projects = projectsRes.results || [];
     
