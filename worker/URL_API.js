@@ -236,11 +236,11 @@ async function handleAddFixedCost(db, data) {
 async function handleGetSOA(db, data) {
     try {
         const query = `
-            SELECT p.id as project_id, p.name as project_name, p.invoice_number, p.invoice_date, p.due_date,
-                   q.quotation_number, c.name as customer_name, c.id as customer_id
+            SELECT p.id as project_id, p.name as project_name, p.invoice_number, p.invoice_date, p.due_date, p.customer_id,
+                   q.quotation_number, c.name as customer_name
             FROM projects p
             LEFT JOIN quotations q ON q.project_id = p.id
-            LEFT JOIN customers c ON q.customer_id = c.id
+            LEFT JOIN customers c ON p.customer_id = c.id
             WHERE p.status = 'Delivered'
         `;
         const { results: deliveredProjects } = await db.prepare(query).all();
@@ -293,9 +293,10 @@ async function handleGetProjects(db, data) {
 async function handleCreateProject(db, data) {
   const existing = await db.prepare("SELECT id FROM projects WHERE name = ?").bind(data.projectName).first();
   if (existing) return { success: false, message: "Project name already exists." };
+  
   const projectId = crypto.randomUUID();
-  await db.prepare("INSERT INTO projects (id, name, main_agent, main_agent_id, co_agent, co_agent_id, status, is_taxable, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))")
-    .bind(projectId, data.projectName, data.mainAgent, data.mainAgentId, data.coAgent || null, data.coAgentId || null, 'In Progress').run();
+  await db.prepare("INSERT INTO projects (id, name, main_agent, main_agent_id, co_agent, co_agent_id, status, is_taxable, customer_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, datetime('now'))")
+    .bind(projectId, data.projectName, data.mainAgent, data.mainAgentId, data.coAgent || null, data.coAgentId || null, 'In Progress', data.customerId || null).run();
 
   if (data.quotationNumber) {
     await db.prepare("UPDATE quotations SET project_id = ? WHERE quotation_number = ?").bind(projectId, data.quotationNumber).run();
