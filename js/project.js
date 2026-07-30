@@ -23,6 +23,21 @@ function populateAgentDropdowns() {
     if (mainSelect && typeof sessionId !== 'undefined') mainSelect.value = sessionId;
 }
 
+async function openNewProjectModal() {
+    populateAgentDropdowns();
+    
+    const res = await apiCall('getUserQuotations', { agentId: sessionId, role: sessionRole });
+    if (res.success) {
+        const select = document.getElementById('newProjQuotation');
+        if (select) {
+            const opts = res.data.filter(q => q.status === 'Approved').map(q => `<option value="${q.quotation_number}">${q.quotation_number} - ${q.customer_name}</option>`);
+            select.innerHTML = '<option value="">-- Select Approved Quotation --</option>' + opts.join('');
+        }
+    }
+    
+    openFSModal('newProjectModal');
+}
+
 document.getElementById('newProjectForm')?.addEventListener('reset', () => {
     setTimeout(() => {
         const container = document.getElementById('newProjAgentContainer');
@@ -55,13 +70,17 @@ document.getElementById('newProjectForm')?.addEventListener('submit', async (e) 
     const coSelect = document.getElementById('newProjCoAgent');
     const coAgentId = coSelect.value || null;
     const coAgentName = coAgentId ? (coSelect.options[coSelect.selectedIndex]?.getAttribute('data-name') || coSelect.options[coSelect.selectedIndex]?.text) : null;
+    
+    const quotationSelect = document.getElementById('newProjQuotation');
+    const quotationNumber = quotationSelect ? quotationSelect.value : null;
 
     const res = await apiCall("createProject", {
         projectName: document.getElementById('newProjName').value,
         mainAgent: mainAgentName,
         mainAgentId: mainAgentId,
         coAgent: coAgentName,
-        coAgentId: coAgentId
+        coAgentId: coAgentId,
+        quotationNumber: quotationNumber
     });
 
     hideLoading();
@@ -102,3 +121,5 @@ async function handleThumbUpload(event) {
         alert("Failed: " + (res.message || ""));
     }
 }
+
+window.openNewProjectModal = openNewProjectModal;
