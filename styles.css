@@ -34,6 +34,7 @@ input[type="number"] {
 .status-Rejected { color: #dc2626; border-color: #fca5a5; background: #fef2f2; }
 .status-InProgress { color: #2563eb; border-color: #93c5fd; background: #eff6ff; }
 .status-Completed { color: #16a34a; border-color: #86efac; background: #f0fdf4; }
+.status-Delivered { color: #0284c7; border-color: #7dd3fc; background: #f0f9ff; }
 
 /* Tabs */
 .tab-content { display: none; }
@@ -55,7 +56,7 @@ input[type="number"] {
     to { opacity: 1; transform: translateY(0); } 
 }
 
-/* Skeleton Loading Shine Effect (Fixed syntax) */
+/* Skeleton Loading Shine Effect */
 .skeleton-loader {
     border-radius: 4px; 
     background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
