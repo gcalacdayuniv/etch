@@ -161,6 +161,14 @@ async function toggleTaxPreference() {
 }
 
 async function toggleProjectStatus(newStatus) {
+    if (newStatus === 'Delivered') {
+        document.getElementById('invProjName').value = currentProject.name;
+        openFSModal('invoiceDetailsModal');
+        // Reset the select element until confirmed
+        document.getElementById('ledgerStatusSelect').value = currentProject.status || 'In Progress';
+        return;
+    }
+
     const sel = document.getElementById('ledgerStatusSelect');
     sel.className = 'status-badge status-' + newStatus.replace(/\s+/g, '');
     const res = await apiCall("updateProjectStatus", { projectName: currentProject.name, status: newStatus });
@@ -173,6 +181,37 @@ async function toggleProjectStatus(newStatus) {
         alert("Failed to update status.");
         sel.value = currentProject.status;
         sel.className = 'status-badge status-' + (currentProject.status || 'In Progress').replace(/\s+/g, '');
+    }
+}
+
+async function confirmDeliveryStatus(e) {
+    e.preventDefault();
+    const invNum = document.getElementById('invNumber').value;
+    const invDate = document.getElementById('invDate').value;
+    const dueDate = document.getElementById('invDueDate').value;
+    const pName = document.getElementById('invProjName').value;
+
+    const res = await apiCall("updateProjectStatus", {
+        projectName: pName,
+        status: 'Delivered',
+        invoiceNumber: invNum,
+        invoiceDate: invDate,
+        dueDate: dueDate
+    });
+
+    if (res.success) {
+        currentProject.status = 'Delivered';
+        const pIndex = allProjects.findIndex(p => p.name === currentProject.name);
+        if (pIndex > -1) allProjects[pIndex].status = 'Delivered';
+        
+        closeFSModal('invoiceDetailsModal');
+        const sel = document.getElementById('ledgerStatusSelect');
+        sel.value = 'Delivered';
+        sel.className = 'status-badge status-Delivered';
+        
+        if (typeof fetchAndRenderDashboard === 'function') fetchAndRenderDashboard();
+    } else {
+        alert("Error saving invoice details.");
     }
 }
 
@@ -394,6 +433,46 @@ function _generatePayoutHTML(p, targetAgentId, targetAgentName, grossShare) {
         </div>
     </div>`;
 }
+
+// ==========================================
+// STATEMENT OF ACCOUNT (SOA)
+// ==========================================
+async function loadSOA() {
+    showLoading("Fetching SOA...");
+    const res = await apiCall("getStatementOfAccount", {});
+    hideLoading();
+    if (res.success) {
+        const tbody = document.getElementById('soaTableBody');
+        if (res.data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-gray-500 font-bold">No unpaid delivered projects found.</td></tr>`;
+        } else {
+            tbody.innerHTML = res.data.map(soa => {
+                const overdueBadge = soa.isOverdue ? `<span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full ml-2 uppercase tracking-wide">Overdue</span>` : '';
+                return `
+                <tr class="hover:bg-gray-50 transition border-b border-gray-100">
+                    <td class="px-3 py-3">
+                        <div class="font-bold text-gray-900">${soa.customer_name || 'Unlinked Customer'}</div>
+                        <div class="text-xs text-gray-500">Proj: ${soa.project_name}</div>
+                        ${soa.quotation_number ? `<div class="text-[10px] text-indigo-400 font-bold">Quote: ${soa.quotation_number}</div>` : ''}
+                    </td>
+                    <td class="px-3 py-3">
+                        <div class="font-bold text-gray-800">INV: ${soa.invoice_number || 'N/A'}</div>
+                        <div class="text-xs text-gray-500">Date: ${soa.invoice_date || '-'}</div>
+                        <div class="text-xs ${soa.isOverdue ? 'text-red-500 font-bold' : 'text-gray-500'}">Due: ${soa.due_date || '-'}${overdueBadge}</div>
+                    </td>
+                    <td class="px-3 py-3 text-right font-semibold text-gray-700">${fmt(soa.totalSales)}</td>
+                    <td class="px-3 py-3 text-right font-semibold text-emerald-600">${fmt(soa.totalPaid)}</td>
+                    <td class="px-3 py-3 text-right font-black text-red-500">${fmt(soa.balance)}</td>
+                </tr>`;
+            }).join('');
+        }
+        openFSModal('soaModal');
+        closeAllMenus();
+    } else {
+        alert("Error loading SOA: " + res.message);
+    }
+}
+
 
 // ==========================================
 // RECORD FORM — MULTI-ENTRY
@@ -637,6 +716,7 @@ window.closeLedgerModal = closeLedgerModal;
 window.switchLedgerTab = switchLedgerTab;
 window.toggleTaxPreference = toggleTaxPreference;
 window.toggleProjectStatus = toggleProjectStatus;
+window.confirmDeliveryStatus = confirmDeliveryStatus;
 window.triggerLedgerThumbUpload = triggerLedgerThumbUpload;
 window.handleLedgerThumbUpload = handleLedgerThumbUpload;
 window.openSubLedger = openSubLedger;
@@ -645,3 +725,4 @@ window.handleEntryTypeChange = handleEntryTypeChange;
 window.toggleAbonoInput = toggleAbonoInput;
 window.addRecordEntry = _addRecordEntry;
 window.removeRecordEntry = removeRecordEntry;
+window.loadSOA = loadSOA;
