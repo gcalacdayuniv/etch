@@ -193,6 +193,12 @@ const AppComponents = {
                     </header>
                     <form id="newProjectForm" class="p-4 space-y-3">
                         <div><label class="block text-xs font-bold text-gray-700 mb-1">Project Name</label><input type="text" id="newProjName" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none" required></div>
+                        <div id="newProjQuotationContainer">
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Link Quotation (Optional)</label>
+                            <select id="newProjQuotation" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none">
+                                <option value="">-- Select Approved Quotation --</option>
+                            </select>
+                        </div>
                         <div id="newProjAgentContainer" class="hidden"><label class="block text-xs font-bold text-gray-700 mb-1">Main Agent</label><select id="newProjMainAgent" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none"></select></div>
                         <div><label class="block text-xs font-bold text-gray-700 mb-1">Co Agent (Optional)</label><select id="newProjCoAgent" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none"><option value="">None (1 Agent Only)</option></select></div>
                         <div class="flex gap-2 pt-2">
@@ -200,6 +206,51 @@ const AppComponents = {
                             <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition shadow-md text-sm">Deploy</button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <!-- NEW INVOICE DETAILS MODAL -->
+            <div id="invoiceDetailsModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[1005] flex items-center justify-center p-4">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
+                    <header class="bg-indigo-50 border-b border-indigo-100 px-4 py-3 flex items-center justify-between">
+                        <h2 class="text-base font-bold text-indigo-800">Delivery & Invoice Details</h2>
+                        <button onclick="closeFSModal('invoiceDetailsModal'); document.getElementById('ledgerStatusSelect').value = currentProject.status || 'In Progress';" class="text-indigo-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                    </header>
+                    <form id="invoiceDetailsForm" class="p-4 space-y-3" onsubmit="confirmDeliveryStatus(event)">
+                        <input type="hidden" id="invProjName">
+                        <div><label class="block text-xs font-bold text-gray-700 mb-1">Invoice Number</label><input type="text" id="invNumber" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none" required></div>
+                        <div><label class="block text-xs font-bold text-gray-700 mb-1">Invoice Date</label><input type="date" id="invDate" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none" required></div>
+                        <div><label class="block text-xs font-bold text-gray-700 mb-1">Due Date</label><input type="date" id="invDueDate" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none" required></div>
+                        <div class="flex gap-2 pt-2">
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition shadow-md text-sm">Save & Mark Delivered</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- NEW SOA MODAL -->
+            <div id="soaModal" class="hidden fixed inset-0 bg-gray-50 z-[1002] flex flex-col h-full w-full">
+                <header class="bg-white border-b border-gray-200 px-3 py-3 flex items-center justify-between sticky top-0 shadow-sm z-10">
+                    <div class="flex items-center gap-3">
+                        <button onclick="closeFSModal('soaModal')" class="p-1.5 rounded-full hover:bg-gray-100"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg></button>
+                        <h2 class="text-lg font-bold text-gray-900">Statement of Accounts (Unpaid)</h2>
+                    </div>
+                </header>
+                <div class="flex-1 overflow-y-auto p-4">
+                    <div class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-sm">
+                                <thead><tr class="bg-gray-50 border-b uppercase text-gray-500 text-xs">
+                                    <th class="px-3 py-3">Customer / Project</th>
+                                    <th class="px-3 py-3">Invoice Details</th>
+                                    <th class="px-3 py-3 text-right">Total Amount</th>
+                                    <th class="px-3 py-3 text-right">Amount Paid</th>
+                                    <th class="px-3 py-3 text-right">Balance Due</th>
+                                </tr></thead>
+                                <tbody id="soaTableBody" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -487,11 +538,6 @@ const AppComponents = {
                 </div>
             </div>
 
-            <!-- ==========================================
-                 CUSTOMER MANAGEMENT MODALS
-                 ========================================== -->
-
-            <!-- Manage Customers (full-screen list) -->
             <div id="manageCustomersModal" class="hidden fixed inset-0 bg-gray-50 z-[1002] flex flex-col h-full w-full">
                 <header class="bg-white border-b border-gray-200 px-3 py-3 flex items-center justify-between sticky top-0 shadow-sm z-10">
                     <div class="flex items-center gap-3">
@@ -528,7 +574,6 @@ const AppComponents = {
                 </div>
             </div>
 
-            <!-- Add / Edit Customer (small modal) -->
             <div id="saveCustomerModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[1003] flex items-center justify-center p-4">
                 <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
                     <header class="bg-gray-50 border-b border-gray-200 px-4 py-3 flex justify-between items-center">
