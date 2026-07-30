@@ -11,12 +11,12 @@ The client-side is a static Single-Page Application (SPA) using Vanilla JavaScri
 
 * **`index.html` & `styles.css`:** Main entry point, the static layout shell, sidebar navigation, and global styling. `index.html` loads the app via `<script type="module" src="./js/router.js"></script>`. Includes navigations for Dashboard, Projects, Quotations, Customers, and Settings.
 * **`js/globals.js`:** Core configurations, state management (currently active user, role), shared utilities (currency formatters, date formatters, UI toasts, loaders), and centralized API fetch wrappers. 
-* **`js/components.js`:** Manages dynamic injection of repetitive HTML components like navigation bars, headers, and specific modal layouts to keep `index.html` cleaner.
+* **`js/components.js`:** Manages dynamic injection of repetitive HTML components like navigation bars, headers, and specific modal layouts (including the Statement of Accounts and Invoice Details modals) to keep `index.html` cleaner.
 * **`js/router.js`:** Hash-based client-side router. Manages view toggling, authentication checks, and lazy-loading of specific module initializations based on the active route.
 * **`js/ui.js`:** Handles global UI interactions, sidebar toggling, theme adjustments, and authentication/login modal logic.
 * **`js/dashboard.js`:** Fetches and renders the high-level metrics, active project lists, and global fixed costs for both agents and superusers.
-* **`js/project.js`:** Handles the creation of new projects, fetching project lists, filtering, and rendering project cards.
-* **`js/ledger.js`:** Manages the detailed financial breakdown of individual projects. Handles adding expenses/sales, calculating agent shares, and tracking receipts.
+* **`js/project.js`:** Handles the creation of new projects, fetching project lists, filtering, project delivery & invoicing, and rendering project cards.
+* **`js/ledger.js`:** Manages the detailed financial breakdown of individual projects. Handles adding expenses/sales, calculating agent shares, tracking receipts, and supporting the Statement of Accounts (SOA) calculations.
 * **`js/quotation-form.js` & `js/quotation-history.js`:** Manages the dynamic multi-item quotation form submission, history tracking, soft deletion, and restoration of client quotes.
 * **`js/quotation_pdf.js`:** Handles the client-side generation and rendering of Quotations into printable/downloadable formats.
 * **`js/customer.js`:** Manages the CRM aspect, handling saving, updating, fetching, and deleting customer records (Name, TIN, Address).
@@ -26,10 +26,9 @@ The client-side is a static Single-Page Application (SPA) using Vanilla JavaScri
 ### 2. Backend API (Cloudflare Workers)
 * **`worker/URL_API.js`:** The centralized edge controller. It implements open CORS headers (`Access-Control-Allow-Origin: *`) for broad accessibility where needed. It parses JSON payloads and routes actions via a master `switch` statement.
   * **Core Actions:** `login`, `updateProfileDetails`, `updateAccountPassword`, `uploadSignature`, `uploadLogo`, `uploadAvatar`.
-  * **Dashboard/Projects:** `getDashboardData`, `addFixedCost`, `getProjectList`, `createProject`, `getProjectLedger`, `addExpense`, `updateProjectStatus`, `toggleProjectTax`.
+  * **Dashboard/Projects:** `getDashboardData`, `addFixedCost`, `getProjectList`, `createProject`, `getProjectLedger`, `addExpense`, `updateProjectStatus`, `toggleProjectTax`, `getStatementOfAccount`.
   * **Quotations/Customers:** `getUserQuotations`, `deleteQuotation`, `restoreQuotation`, `updateQuotationStatus`, `getQuotationDetail`, `processForm`, `editQuotation`, `getCustomers`, `saveCustomer`, `deleteDbCustomer`.
   * **External Feeds:** `ProfessionalFinanceDashboard` — A specialized endpoint that queries the database, calculates the net income for completed projects and global expenses, and returns a strictly formatted JSON Standard Data Contract designed to feed the master Financial Dashboard.
-* **`GAS/code.gs`:** A Google Apps Script web app acting as a microservice for processing Base64 image strings and storing them into designated Google Drive folders, returning the public URL back to the Worker.
 
 ### 3. Database Layer (Cloudflare D1 - Serverless SQLite)
 The database uses Universally Unique Identifiers (UUIDs) for all primary keys, generated on the edge via `crypto.randomUUID()`.
@@ -38,9 +37,9 @@ The database uses Universally Unique Identifiers (UUIDs) for all primary keys, g
 * **`app_config`:** key, value
 * **`customers`:** id, name, tin, address, created_by_id, created_at
 * **`project_ledger`:** id, project_id, type, description, amount, agent_name, receipt_url, created_at, agent_id
-* **`projects`:** id, name, main_agent, co_agent, status, thumbnail_url, created_at, is_taxable, main_agent_id, co_agent_id
+* **`projects`:** id, name, main_agent, co_agent, status, thumbnail_url, created_at, is_taxable, main_agent_id, co_agent_id, invoice_number, invoice_date, due_date, customer_id
 * **`quotation_items`:** id, quotation_id, description, quantity, unit_cost, amount
-* **`quotations`:** id, quotation_number, customer_name, customer_tin, customer_address, prepared_by, status, pdf_url, created_at, prepared_by_id, is_deleted, prepared_by_contact
+* **`quotations`:** id, quotation_number, customer_name, customer_tin, customer_address, prepared_by, status, pdf_url, created_at, prepared_by_id, is_deleted, prepared_by_contact, project_id, customer_id
 * **`sqlite_sequence`:** rowid, name, seq
 
 ## Development Directives
