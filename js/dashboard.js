@@ -6,10 +6,10 @@
 const DashboardManager = {
     state: {
         viewMode: 'grid', // 'grid' | 'list'
-        tabStatus: 'In Progress' // 'In Progress' | 'Completed' | 'Group B' | 'All'
+        tabStatus: 'In Progress' // 'In Progress' | 'Completed' | 'Delivered' | 'Group B' | 'All'
     },
 
-    _tabOrder: ['all', 'active', 'completed', 'taxable'],
+    _tabOrder: ['all', 'active', 'completed', 'delivered', 'taxable'],
 
     setViewMode(mode) {
         this.state.viewMode = mode;
@@ -32,7 +32,7 @@ const DashboardManager = {
             btn.className = "tab-btn flex-1 min-w-[80px] py-1.5 px-3 text-xs font-bold text-gray-500 rounded transition hover:bg-gray-200";
         });
 
-        const statusMap = { 'all': 'All', 'active': 'In Progress', 'completed': 'Completed', 'taxable': 'Group B' };
+        const statusMap = { 'all': 'All', 'active': 'In Progress', 'completed': 'Completed', 'delivered': 'Delivered', 'taxable': 'Group B' };
         this.state.tabStatus = statusMap[status] || 'Group B';
 
         const activeBtn = document.getElementById(`dash-btn-${status}`);
@@ -43,7 +43,7 @@ const DashboardManager = {
     },
 
     _getCurrentTabKey() {
-        const reverseMap = { 'All': 'all', 'In Progress': 'active', 'Completed': 'completed', 'Group B': 'taxable' };
+        const reverseMap = { 'All': 'all', 'In Progress': 'active', 'Completed': 'completed', 'Delivered': 'delivered', 'Group B': 'taxable' };
         return reverseMap[this.state.tabStatus] || 'active';
     },
 
@@ -130,6 +130,7 @@ const DashboardManager = {
 
         if (this.state.tabStatus === 'In Progress') filteredProj = filteredProj.filter(p => p.status === 'In Progress');
         else if (this.state.tabStatus === 'Completed') filteredProj = filteredProj.filter(p => p.status === 'Completed');
+        else if (this.state.tabStatus === 'Delivered') filteredProj = filteredProj.filter(p => p.status === 'Delivered');
         else if (this.state.tabStatus === 'Group B') filteredProj = filteredProj.filter(p => p.is_taxable !== 0);
 
         if (sDate || eDate) {
@@ -315,21 +316,15 @@ const DashboardManager = {
         }
     },
 
-    _renderProjectGridView(container, projData, role) {
-        container.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
-        container.innerHTML = projData.map(data => this._buildCardHTML(data, role, 'grid')).join('');
-    },
-
-    _renderProjectListView(container, projData, role) {
-        container.className = 'flex flex-col gap-2';
-        container.innerHTML = projData.map(data => this._buildCardHTML(data, role, 'list')).join('');
-    },
-
     _buildCardHTML(data, role, layout) {
         const { p, thumbUrl } = data;
         const pDate = new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const isHidden = (typeof amountsHidden !== 'undefined') ? amountsHidden : false;
         
+        const soaBtnHTML = p.status === 'Delivered' 
+            ? `<button onclick="generateSOAForProject('${p.id}', event)" class="mt-2 w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-1.5 rounded text-xs transition border border-indigo-200 flex items-center justify-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> Preview SOA</button>`
+            : '';
+
         if (layout === 'grid') {
             const metricsHTML = role === 'superuser' 
                 ? `<div class="flex justify-between text-xs"><span class="text-gray-400">Sales</span><span class="font-bold text-emerald-600">${fmt(data.pSales)}</span></div>
@@ -355,9 +350,11 @@ const DashboardManager = {
                         <div class="space-y-0.5">${metricsHTML}</div>
                     </div>
                 </div>
+                ${p.status === 'Delivered' ? `<div class="px-3 pb-3">${soaBtnHTML}</div>` : ''}
             </div>`;
         } else {
-            const statusDot = p.status === 'Completed' ? `<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 inline-block" title="Completed"></span>` : `<span class="w-2 h-2 rounded-full bg-blue-400 shrink-0 inline-block" title="In Progress"></span>`;
+            const statusColor = p.status === 'Completed' ? 'bg-emerald-400' : (p.status === 'Delivered' ? 'bg-indigo-400' : 'bg-blue-400');
+            const statusDot = `<span class="w-2 h-2 rounded-full ${statusColor} shrink-0 inline-block" title="${p.status}"></span>`;
             
             const listStatsHTML = role === 'superuser'
                 ? `<span>Sales: <b class="text-emerald-600">${fmt(data.pSales)}</b></span>
@@ -386,7 +383,10 @@ const DashboardManager = {
                         ${listStatsHTML}
                     </div>
                 </div>
-                <div class="shrink-0 px-3 py-2 text-right">${listRightHTML}</div>
+                <div class="shrink-0 px-3 py-2 text-right flex flex-col items-end gap-1">
+                    <div>${listRightHTML}</div>
+                    ${p.status === 'Delivered' ? `<button onclick="generateSOAForProject('${p.id}', event)" class="px-2 py-1 bg-indigo-50 text-indigo-700 font-bold rounded text-[10px] border border-indigo-200 hover:bg-indigo-100 transition">View SOA</button>` : ''}
+                </div>
             </div>`;
         }
     },
@@ -435,6 +435,39 @@ const DashboardManager = {
                 DashboardManager.swipeToAdjacentTab(dx < 0 ? 1 : -1);
             }
         }, { passive: true });
+    }
+};
+
+// ==========================================
+// SOA GENERATION HANDLER
+// ==========================================
+window.generateSOAForProject = async function(projectId, event) {
+    if (event) event.stopPropagation();
+    
+    if (typeof showLoading !== 'undefined') showLoading("Fetching SOA details...");
+    
+    try {
+        const res = await apiCall('getStatementOfAccount', {});
+        if (typeof hideLoading !== 'undefined') hideLoading();
+        
+        if (res && res.success) {
+            const soaData = res.data.find(d => d.project_id === projectId);
+            if (soaData) {
+                if (typeof openSOAPDFPreview === 'function') {
+                    openSOAPDFPreview(soaData);
+                } else {
+                    alert("SOA viewer script is not loaded properly.");
+                }
+            } else {
+                alert("Could not find full statement data for this delivered project. Ensure it has an invoice.");
+            }
+        } else {
+            alert("Failed to fetch SOA data.");
+        }
+    } catch (e) {
+        if (typeof hideLoading !== 'undefined') hideLoading();
+        alert("An error occurred while fetching SOA details.");
+        console.error(e);
     }
 };
 
