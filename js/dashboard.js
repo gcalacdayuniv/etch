@@ -319,8 +319,12 @@ const DashboardManager = {
         const isHidden = (typeof amountsHidden !== 'undefined') ? amountsHidden : false;
 
         const sortedFC = [...activeFC].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        if (this.state.tabStatus === 'In Progress') {
-            fcRowsHtml = "<tr><td colspan='3' class='py-8 text-center text-gray-400 font-semibold'>Fixed costs are intentionally omitted in the 'In Progress' view.</td></tr>";
+        
+        // Fixed costs are omitted for both 'In Progress' and 'Delivered' views
+        const omitFixedCosts = (this.state.tabStatus === 'In Progress' || this.state.tabStatus === 'Delivered');
+
+        if (omitFixedCosts) {
+            fcRowsHtml = `<tr><td colspan='3' class='py-8 text-center text-gray-400 font-semibold'>Fixed costs are intentionally omitted in the '${this.state.tabStatus}' view.</td></tr>`;
         } else if (sortedFC.length === 0) {
             fcRowsHtml = "<tr><td colspan='3' class='py-8 text-center font-bold text-gray-400'>No fixed costs recorded for this period.</td></tr>";
         } else {
