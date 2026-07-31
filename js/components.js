@@ -185,6 +185,95 @@ const AppComponents = {
                 </div>
             </div>
 
+            <!-- NEW SOA PDF PREVIEW MODAL -->
+            <div id="soaPdfPreviewModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm z-[2000] flex flex-col">
+                <div class="shrink-0 flex items-center justify-between px-3 py-2 bg-black/70 border-b border-white/10">
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button onclick="closeFSModal('soaPdfPreviewModal')" class="bg-red-500 hover:bg-red-600 text-white font-bold px-3 py-1.5 rounded text-xs shadow transition">✕ Close</button>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="let inp = document.getElementById('soaPdfZoomInput'); inp.value = Math.max(20, parseInt(inp.value) - 10); applySOAPDFZoom(inp.value);" class="text-white hover:bg-white/20 p-1.5 rounded transition" title="Zoom Out"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg></button>
+                        <div class="flex items-center bg-white/10 rounded px-1.5 py-0.5">
+                            <input type="number" id="soaPdfZoomInput" min="20" max="200" value="100" class="w-10 bg-transparent text-white text-xs font-bold text-center outline-none" onchange="applySOAPDFZoom(this.value)">
+                            <span class="text-white text-xs font-bold pr-1">%</span>
+                        </div>
+                        <button onclick="let inp = document.getElementById('soaPdfZoomInput'); inp.value = Math.min(200, parseInt(inp.value) + 10); applySOAPDFZoom(inp.value);" class="text-white hover:bg-white/20 p-1.5 rounded transition" title="Zoom In"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg></button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="fitSOAPDFToScreen()" class="shrink-0 bg-white/20 hover:bg-white/30 text-white p-1.5 rounded transition border border-white/10" title="Fit to Page"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg></button>
+                        <button onclick="downloadSOAPDF()" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white p-1.5 rounded shadow transition" title="Download PDF"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></button>
+                    </div>
+                </div>
+                <div id="soaPdfPreviewViewport" class="flex-1 overflow-auto flex items-start justify-start p-0 sm:p-4">
+                    <div id="soaPdfScaleWrapper" style="transform-origin: top left; transition: transform 0.1s ease; will-change: transform;">
+                        <div id="soa-document" style="background-color: white; width: 8.5in; height: 10.6in; padding: 0.3in 0.4in; box-sizing: border-box; color: #000; font-size: 12px; display: flex; flex-direction: column; overflow: hidden; position: relative;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                                <div style="display: flex; gap: 15px; height: 95px;">
+                                    <img id="soa-pdf-logo-1" src="" style="height: 100%; width: auto; object-fit: contain;" alt="Logo 1">
+                                    <div style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+                                        <img id="soa-pdf-logo-2" src="" style="height: 52px; width: auto; object-fit: contain; align-self: flex-start;" alt="Logo 2">
+                                        <div style="font-size: 11px; line-height: 1.2;">
+                                            <strong>Operated by: Generoso T. Calacday Jr.</strong><br>
+                                            Karuhatan Valenzuela City<br>
+                                            www.etchsignage.com
+                                        </div>
+                                    </div>
+                                </div>
+                                <h1 style="font-size: 26px; font-weight: bold; color: #194447; margin: 0; text-transform: uppercase;">Statement of Account</h1>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border: 0.5pt solid #000; padding: 8px; margin-bottom: 10px;">
+                                <div style="width: 55%;">
+                                    <strong>BILL TO:</strong><br><br>
+                                    <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+                                        <tr><td style="width: 110px; font-weight: bold; padding: 12px 4px; vertical-align: top;">Customer Name</td><td style="width: 10px; padding: 12px 4px; vertical-align: top;">:</td><td style="padding: 12px 4px; vertical-align: top;"><span id="soa-pdf-reg-name"></span></td></tr>
+                                        <tr><td style="width: 110px; font-weight: bold; padding: 12px 4px; vertical-align: top;">TIN</td><td style="width: 10px; padding: 12px 4px; vertical-align: top;">:</td><td style="padding: 12px 4px; vertical-align: top;"><span id="soa-pdf-tin"></span></td></tr>
+                                        <tr><td style="width: 110px; font-weight: bold; padding: 12px 4px; vertical-align: top;">Address</td><td style="width: 10px; padding: 12px 4px; vertical-align: top;">:</td><td style="padding: 12px 4px; vertical-align: top;"><span id="soa-pdf-bus-address"></span></td></tr>
+                                    </table>
+                                </div>
+                                <div style="width: 40%;">
+                                    <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+                                        <tr><td style="width: 90px; font-weight: bold; padding: 12px 4px; vertical-align: top;">Date</td><td style="width: 10px; padding: 12px 4px; vertical-align: top;">:</td><td style="text-align: right; padding: 12px 4px; vertical-align: top;"><span id="soa-pdf-date"></span></td></tr>
+                                        <tr><td style="width: 90px; font-weight: bold; padding: 12px 4px; vertical-align: top;">Invoice No.</td><td style="width: 10px; padding: 12px 4px; vertical-align: top;">:</td><td style="text-align: right; padding: 12px 4px; vertical-align: top;"><span id="soa-pdf-inv-no"></span></td></tr>
+                                        <tr><td style="width: 90px; font-weight: bold; padding: 12px 4px; vertical-align: top;">Due Date</td><td style="width: 10px; padding: 12px 4px; vertical-align: top;">:</td><td style="text-align: right; padding: 12px 4px; vertical-align: top;"><span id="soa-pdf-due-date"></span></td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px; table-layout: fixed; empty-cells: show;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 15%; border: 0.5pt solid #000; padding: 4px 12px; text-align: center; font-weight: bold; background-color: #e0e0e0;">Date</th>
+                                        <th style="width: 40%; border: 0.5pt solid #000; padding: 4px 12px; text-align: center; font-weight: bold; background-color: #e0e0e0;">Description</th>
+                                        <th style="width: 22.5%; border: 0.5pt solid #000; padding: 4px 12px; text-align: center; font-weight: bold; background-color: #e0e0e0;">Charges</th>
+                                        <th style="width: 22.5%; border: 0.5pt solid #000; padding: 4px 12px; text-align: center; font-weight: bold; background-color: #e0e0e0;">Payments</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="soa-pdf-table-body"></tbody>
+                            </table>
+                            <div style="display: flex; flex-direction: row; justify-content: flex-end; align-items: center; margin-bottom: 10px; margin-top: 5px;">
+                                <div style="display: flex; width: 300px; border: 0.5pt solid #000; padding: 4px 12px 4px 5px; font-weight: bold; font-size: 14px; box-sizing: border-box; background-color: #f9fafb;">
+                                    <div style="flex-grow: 1; text-align: left;">BALANCE DUE</div>
+                                    <div id="soa-pdf-balance-due" style="text-align: right; color: #dc2626;"></div>
+                                </div>
+                            </div>
+                            <div style="margin-top: auto; display: flex; flex-direction: column;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <div style="width: 48%; position: relative; margin-top: 15px;">
+                                        Prepared by:
+                                        <div style="text-align: center;">
+                                            <img id="soa-pdf-prep-sig" src="" alt="Signature" style="visibility: hidden; height: 75px; width: auto; object-fit: contain; margin-bottom: -45px; top: -10px; position: relative; z-index: 10; display: inline-block;">
+                                            <div style="position: relative; z-index: 1; text-align: center; margin-top: 15px; margin-bottom: 2px;">
+                                                <span id="soa-pdf-prep-by" style="font-weight: bold;"></span>
+                                            </div>
+                                            <div style="position: relative; z-index: 1; border-top: 0.5pt solid #000; text-align: center; padding-top: 3px; font-size: 11px;">Finance / Accounting</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="newProjectModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[1001] flex items-center justify-center p-4">
                 <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
                     <header class="bg-gray-50 border-b border-gray-200 px-4 py-3 flex items-center justify-between">
@@ -252,6 +341,7 @@ const AppComponents = {
                                     <th class="px-3 py-3 text-right">Total Amount</th>
                                     <th class="px-3 py-3 text-right">Amount Paid</th>
                                     <th class="px-3 py-3 text-right">Balance Due</th>
+                                    <th class="px-3 py-3 text-center">Action</th>
                                 </tr></thead>
                                 <tbody id="soaTableBody" class="divide-y divide-gray-100"></tbody>
                             </table>
