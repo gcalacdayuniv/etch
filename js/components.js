@@ -200,7 +200,7 @@ const AppComponents = {
                         <button onclick="let inp = document.getElementById('soaPdfZoomInput'); inp.value = Math.min(200, parseInt(inp.value) + 10); applySOAPDFZoom(inp.value);" class="text-white hover:bg-white/20 p-1.5 rounded transition" title="Zoom In"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg></button>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button onclick="fitSOAPDFToScreen()" class="shrink-0 bg-white/20 hover:bg-white/30 text-white p-1.5 rounded transition border border-white/10" title="Fit to Page"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg></button>
+                        <button onclick="fitSOAPDFToScreen()" class="shrink-0 bg-white/20 hover:bg-white/30 text-white p-1.5 rounded transition border border-white/10" title="Fit to Page"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg></button>
                         <button onclick="downloadSOAPDF()" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white p-1.5 rounded shadow transition" title="Download PDF"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></button>
                     </div>
                 </div>
@@ -271,6 +271,31 @@ const AppComponents = {
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- EDIT PROJECT CUSTOMER MODAL (ADMIN ONLY) -->
+            <div id="editProjectCustomerModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[1003] flex items-center justify-center p-4">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
+                    <header class="bg-gray-50 border-b border-gray-200 px-4 py-3 flex justify-between items-center">
+                        <h2 class="font-bold text-gray-900">Edit Project Customer</h2>
+                        <button onclick="closeFSModal('editProjectCustomerModal')">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </header>
+                    <form id="editProjectCustomerForm" class="p-4 space-y-3" onsubmit="window.saveProjectCustomer(event)">
+                        <input type="hidden" id="editProjId">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Select Customer</label>
+                            <select id="editProjCustSelect" class="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-indigo-500" required>
+                                <option value="">-- Select Customer --</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2 pt-1">
+                            <button type="button" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 rounded-lg text-sm transition" onclick="closeFSModal('editProjectCustomerModal')">Cancel</button>
+                            <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg text-sm transition shadow-md">Save Changes</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
