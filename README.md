@@ -11,14 +11,15 @@ The client-side is a static Single-Page Application (SPA) using Vanilla JavaScri
 
 * **`index.html` & `styles.css`:** Main entry point, the static layout shell, sidebar navigation, and global styling. `index.html` loads the app via `<script type="module" src="./js/router.js"></script>`. Includes navigations for Dashboard, Projects, Quotations, Customers, and Settings.
 * **`js/globals.js`:** Core configurations, state management (currently active user, role), shared utilities (currency formatters, date formatters, UI toasts, loaders), and centralized API fetch wrappers. 
-* **`js/components.js`:** Manages dynamic injection of repetitive HTML components like navigation bars, headers, and specific modal layouts (including the Statement of Accounts and Invoice Details modals) to keep `index.html` cleaner.
+* **`js/components.js`:** Manages dynamic injection of repetitive HTML components like navigation bars, headers, and specific modal layouts (including the Statement of Accounts, Invoice Details, and SOA PDF Preview modals) to keep `index.html` cleaner.
 * **`js/router.js`:** Hash-based client-side router. Manages view toggling, authentication checks, and lazy-loading of specific module initializations based on the active route.
 * **`js/ui.js`:** Handles global UI interactions, sidebar toggling, theme adjustments, and authentication/login modal logic.
-* **`js/dashboard.js`:** Fetches and renders the high-level metrics, active project lists, and global fixed costs for both agents and superusers.
+* **`js/dashboard.js`:** Fetches and renders the high-level metrics, active project lists, and global fixed costs for both agents and superusers. Includes categorized tab views (All, In Progress, Completed, Delivered, and Group B) for streamlined tracking.
 * **`js/project.js`:** Handles the creation of new projects, fetching project lists, filtering, project delivery & invoicing, and rendering project cards.
 * **`js/ledger.js`:** Manages the detailed financial breakdown of individual projects. Handles adding expenses/sales, calculating agent shares, tracking receipts, and supporting the Statement of Accounts (SOA) calculations.
 * **`js/quotation-form.js` & `js/quotation-history.js`:** Manages the dynamic multi-item quotation form submission, history tracking, soft deletion, and restoration of client quotes.
 * **`js/quotation_pdf.js`:** Handles the client-side generation and rendering of Quotations into printable/downloadable formats.
+* **`js/soa_pdf.js`:** Handles the client-side generation, scaling, previewing, and rendering of the Statement of Account (SOA) into printable/downloadable PDF formats.
 * **`js/customer.js`:** Manages the CRM aspect, handling saving, updating, fetching, and deleting customer records (Name, TIN, Address).
 * **`js/pwa.js`:** Generates and registers the service worker (`sw.js`) and handles the PWA manifest/installability prompts.
 * **`js/privacy.js`:** Renders the static privacy policy and terms of service views.
@@ -29,6 +30,7 @@ The client-side is a static Single-Page Application (SPA) using Vanilla JavaScri
   * **Dashboard/Projects:** `getDashboardData`, `addFixedCost`, `getProjectList`, `createProject`, `getProjectLedger`, `addExpense`, `updateProjectStatus`, `toggleProjectTax`, `getStatementOfAccount`.
   * **Quotations/Customers:** `getUserQuotations`, `deleteQuotation`, `restoreQuotation`, `updateQuotationStatus`, `getQuotationDetail`, `processForm`, `editQuotation`, `getCustomers`, `saveCustomer`, `deleteDbCustomer`.
   * **External Feeds:** `ProfessionalFinanceDashboard` — A specialized endpoint that queries the database, calculates the net income for completed projects and global expenses, and returns a strictly formatted JSON Standard Data Contract designed to feed the master Financial Dashboard.
+* **`GAS/code.gs`:** A Google Apps Script web app acting as a microservice for processing Base64 image strings and storing them into designated Google Drive folders, returning the public URL back to the Worker.
 
 ### 3. Database Layer (Cloudflare D1 - Serverless SQLite)
 The database uses Universally Unique Identifiers (UUIDs) for all primary keys, generated on the edge via `crypto.randomUUID()`.
@@ -54,4 +56,4 @@ When asked to add features, debug, or refactor, you must strictly adhere to the 
 7. **Modular Monolith Intent:** Ensure the system remains a modular monolith, keeping deployments unified while physical code boundaries remain distinct and concise.
 
 ## Task
-Whenever the user requests an update, refactor, or addition to the Etch Portal, analyze which specific module/file requires changes, draft the exact logic needed using this separated file architecture, and output the fully updated structural file scripts and provide an updated read me to reflect the changes. 
+Whenever the user requests an update, refactor, or addition to the Etch Portal, analyze which specific module/file requires changes, draft the exact logic needed using this separated file architecture, and output the fully updated structural file scripts. and provide an updated read me to reflect the changes. 
