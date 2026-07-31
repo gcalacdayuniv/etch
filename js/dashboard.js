@@ -43,6 +43,21 @@ const DashboardManager = {
         }
     },
 
+    _ensureCustomerFilterExists() {
+        const startInput = document.getElementById('dashStartDate');
+        if (startInput && !document.getElementById('dashCustomerFilter')) {
+            const container = startInput.parentElement;
+            const select = document.createElement('select');
+            select.id = 'dashCustomerFilter';
+            select.className = "px-3 py-1.5 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600 outline-none";
+            select.innerHTML = '<option value="">All Customers</option>';
+            select.onchange = () => this.renderUI();
+            
+            // Insert the filter before the date inputs
+            container.insertBefore(select, startInput);
+        }
+    },
+
     switchTab(status) {
         // Target #dashboardView to ensure active states reset properly
         document.querySelectorAll('#dashboardView .tab-btn').forEach(btn => {
@@ -81,8 +96,12 @@ const DashboardManager = {
     clearFilters() {
         const sDate = document.getElementById('dashStartDate');
         const eDate = document.getElementById('dashEndDate');
+        const custFilter = document.getElementById('dashCustomerFilter');
+        
         if (sDate) sDate.value = '';
         if (eDate) eDate.value = '';
+        if (custFilter) custFilter.value = '';
+        
         this.renderUI();
     },
 
@@ -106,6 +125,7 @@ const DashboardManager = {
 
     async fetchAndRender() {
         this._ensureDeliveredTabExists();
+        this._ensureCustomerFilterExists();
         
         const container = document.getElementById('dashProjectsContainer');
         if (!container) return;
@@ -123,6 +143,20 @@ const DashboardManager = {
             if (res && res.success) {
                 window.allProjects = res.data.projects || [];
                 window.globalFixedCosts = res.data.fixedCosts || [];
+                window.allCustomers = res.data.customers || [];
+                
+                // Populate Customer Filter Select
+                const custFilter = document.getElementById('dashCustomerFilter');
+                if (custFilter && window.allCustomers.length > 0) {
+                    const currentVal = custFilter.value;
+                    let opts = '<option value="">All Customers</option>';
+                    window.allCustomers.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
+                        opts += `<option value="${c.id}">${c.name}</option>`;
+                    });
+                    custFilter.innerHTML = opts;
+                    custFilter.value = currentVal; // Restore filter value if it existed
+                }
+
                 this.renderUI();
             } else {
                 container.innerHTML = "<p class='col-span-full text-center py-6 text-gray-500 font-bold'>Failed to load dashboard data.</p>";
@@ -148,17 +182,27 @@ const DashboardManager = {
 
         const startInput = document.getElementById('dashStartDate');
         const endInput = document.getElementById('dashEndDate');
+        const custFilter = document.getElementById('dashCustomerFilter');
+        
         const sDate = startInput ? startInput.value : '';
         const eDate = endInput ? endInput.value : '';
+        const selectedCustomerId = custFilter ? custFilter.value : '';
         
         let filteredProj = window.allProjects || [];
         let activeFC = window.globalFixedCosts || [];
 
+        // 1. Filter by Status
         if (this.state.tabStatus === 'In Progress') filteredProj = filteredProj.filter(p => p.status === 'In Progress');
         else if (this.state.tabStatus === 'Completed') filteredProj = filteredProj.filter(p => p.status === 'Completed');
         else if (this.state.tabStatus === 'Delivered') filteredProj = filteredProj.filter(p => p.status === 'Delivered');
         else if (this.state.tabStatus === 'Group B') filteredProj = filteredProj.filter(p => p.is_taxable !== 0);
 
+        // 2. Filter by Customer
+        if (selectedCustomerId) {
+            filteredProj = filteredProj.filter(p => p.customer_id === selectedCustomerId);
+        }
+
+        // 3. Filter by Date Range
         if (sDate || eDate) {
             const start = sDate ? new Date(sDate + 'T00:00:00') : new Date('2000-01-01');
             const end = eDate ? new Date(eDate + 'T23:59:59') : new Date('2100-01-01');
@@ -375,6 +419,13 @@ const DashboardManager = {
         const pDate = new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const isHidden = (typeof amountsHidden !== 'undefined') ? amountsHidden : false;
         
+        const custName = p.customer_name || 'No Customer Linked';
+        const editBtn = role === 'superuser' 
+            ? `<button onclick="DashboardManager.openEditCustomerModal('${p.id}', '${p.customer_id}', event)" class="ml-1 text-indigo-400 hover:text-indigo-600 transition" title="Edit Customer"><svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>` 
+            : '';
+
+        const customerBlockHTML = `<div class="flex items-center text-[10px] text-indigo-600 font-bold mb-1 w-full truncate"><span class="truncate uppercase tracking-wider">${custName}</span> ${editBtn}</div>`;
+
         const soaBtnHTML = p.status === 'Delivered' 
             ? `<button onclick="generateSOAForProject('${p.id}', event)" class="mt-2 w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-1.5 rounded text-xs transition border border-indigo-200 flex items-center justify-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> Preview SOA</button>`
             : '';
@@ -391,24 +442,25 @@ const DashboardManager = {
                    <div class="flex justify-between text-xs pt-0.5"><span class="font-bold text-indigo-900">Net Takeaway</span><span class="font-black text-indigo-700">${typeof fmt !== 'undefined' ? fmt(data.netPayout) : data.netPayout}</span></div>`;
 
             return `
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition overflow-hidden cursor-pointer" onclick="navigateTo('/ledger/${encodeURIComponent(p.name)}')">
-                <div class="flex gap-0">
-                    <div class="relative w-24 sm:w-28 shrink-0 h-[110px]">
-                        <img src="${thumbUrl}" class="w-full h-full object-cover object-center" onerror="this.src=typeof sessionFallbackThumb !== 'undefined' ? sessionFallbackThumb : ''">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition overflow-hidden cursor-pointer flex flex-col h-full" onclick="navigateTo('/ledger/${encodeURIComponent(p.name)}')">
+                <div class="flex gap-0 flex-1">
+                    <div class="relative w-24 sm:w-28 shrink-0">
+                        <img src="${thumbUrl}" class="w-full h-full object-cover object-center absolute inset-0" onerror="this.src=typeof sessionFallbackThumb !== 'undefined' ? sessionFallbackThumb : ''">
                     </div>
                     <div class="flex-1 p-3 flex flex-col justify-between min-w-0">
                         <div>
-                            <h3 class="font-bold text-gray-800 truncate text-sm">${p.name}</h3>
-                            <p class="text-[10px] text-gray-400 mb-1">${pDate}</p>
+                            <h3 class="font-bold text-gray-800 truncate text-sm leading-tight">${p.name}</h3>
+                            ${customerBlockHTML}
+                            <p class="text-[9px] text-gray-400 mb-2">${pDate}</p>
                         </div>
                         <div class="space-y-0.5">${metricsHTML}</div>
                     </div>
                 </div>
-                ${p.status === 'Delivered' ? `<div class="px-3 pb-3">${soaBtnHTML}</div>` : ''}
+                ${p.status === 'Delivered' ? `<div class="px-3 pb-3 shrink-0">${soaBtnHTML}</div>` : ''}
             </div>`;
         } else {
             const statusColor = p.status === 'Completed' ? 'bg-emerald-400' : (p.status === 'Delivered' ? 'bg-indigo-400' : 'bg-blue-400');
-            const statusDot = `<span class="w-2 h-2 rounded-full ${statusColor} shrink-0 inline-block" title="${p.status}"></span>`;
+            const statusDot = `<span class="w-2 h-2 rounded-full ${statusColor} shrink-0 inline-block mt-0.5" title="${p.status}"></span>`;
             
             const listStatsHTML = role === 'superuser'
                 ? `<span>Sales: <b class="text-emerald-600">${typeof fmt !== 'undefined' ? fmt(data.pSales) : data.pSales}</b></span>
@@ -424,24 +476,67 @@ const DashboardManager = {
 
             return `
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition overflow-hidden cursor-pointer flex items-center gap-0" onclick="navigateTo('/ledger/${encodeURIComponent(p.name)}')">
-                <div class="w-16 h-16 shrink-0">
+                <div class="w-16 h-16 shrink-0 self-stretch">
                     <img src="${thumbUrl}" class="w-full h-full object-cover object-center" onerror="this.src=typeof sessionFallbackThumb !== 'undefined' ? sessionFallbackThumb : ''">
                 </div>
                 <div class="flex-1 px-3 py-2 min-w-0 flex flex-col justify-center gap-0.5">
-                    <div class="flex items-center gap-1.5 min-w-0">
+                    <div class="flex items-start gap-1.5 min-w-0">
                         ${statusDot}
-                        <h3 class="font-bold text-gray-800 truncate text-sm">${p.name}</h3>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-bold text-gray-800 truncate text-sm leading-tight">${p.name}</h3>
+                            ${customerBlockHTML}
+                        </div>
                     </div>
-                    <div class="flex items-center gap-3 text-[11px] text-gray-500 flex-wrap">
-                        <span class="text-[10px] text-gray-400">${pDate}</span>
+                    <div class="flex items-center gap-3 text-[10px] text-gray-500 flex-wrap mt-0.5">
+                        <span class="text-gray-400">${pDate}</span>
                         ${listStatsHTML}
                     </div>
                 </div>
-                <div class="shrink-0 px-3 py-2 text-right flex flex-col items-end gap-1">
+                <div class="shrink-0 px-3 py-2 text-right flex flex-col items-end gap-1 border-l border-gray-100">
                     <div>${listRightHTML}</div>
                     ${p.status === 'Delivered' ? `<button onclick="generateSOAForProject('${p.id}', event)" class="px-2 py-1 bg-indigo-50 text-indigo-700 font-bold rounded text-[10px] border border-indigo-200 hover:bg-indigo-100 transition">View SOA</button>` : ''}
                 </div>
             </div>`;
+        }
+    },
+
+    openEditCustomerModal(projectId, currentCustomerId, e) {
+        if (e) e.stopPropagation();
+        
+        const select = document.getElementById('editProjCustSelect');
+        const idInput = document.getElementById('editProjId');
+        if (!select || !idInput) return;
+
+        idInput.value = projectId;
+        
+        let opts = '<option value="">-- Select Customer --</option>';
+        if (window.allCustomers) {
+            window.allCustomers.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
+                opts += `<option value="${c.id}" ${c.id === currentCustomerId ? 'selected' : ''}>${c.name}</option>`;
+            });
+        }
+        select.innerHTML = opts;
+        
+        if (typeof openFSModal === 'function') openFSModal('editProjectCustomerModal');
+    },
+
+    async saveProjectCustomer(e) {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        if (btn) { btn.innerText = 'Saving...'; btn.disabled = true; }
+        
+        const projectId = document.getElementById('editProjId').value;
+        const customerId = document.getElementById('editProjCustSelect').value;
+        
+        const res = await apiCall('updateProjectCustomer', { projectId, customerId });
+        
+        if (btn) { btn.innerText = 'Save Changes'; btn.disabled = false; }
+        
+        if (res.success) {
+            if (typeof closeFSModal === 'function') closeFSModal('editProjectCustomerModal');
+            this.fetchAndRender();
+        } else {
+            alert("Error updating customer: " + res.message);
         }
     },
 
@@ -544,8 +639,10 @@ if (fcForm) {
 document.addEventListener('DOMContentLoaded', () => DashboardManager.initSwipeGesture());
 if (document.readyState !== 'loading') DashboardManager.initSwipeGesture();
 
+window.DashboardManager = DashboardManager; // Expose full object for inline onclick functions
 window.setProjectViewMode = DashboardManager.setViewMode.bind(DashboardManager);
 window.switchDashTab = DashboardManager.switchTab.bind(DashboardManager);
 window.clearDashFilters = DashboardManager.clearFilters.bind(DashboardManager);
 window.renderDashboardUI = DashboardManager.renderUI.bind(DashboardManager);
 window.fetchAndRenderDashboard = DashboardManager.fetchAndRender.bind(DashboardManager);
+window.saveProjectCustomer = DashboardManager.saveProjectCustomer.bind(DashboardManager);
