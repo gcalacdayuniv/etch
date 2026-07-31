@@ -21,7 +21,7 @@ The client-side is a static Single-Page Application (SPA) using Vanilla JavaScri
 * **`js/quotation_pdf.js`:** Handles the client-side generation and rendering of Quotations into printable/downloadable formats.
 * **`js/soa_pdf.js`:** Handles the client-side generation, scaling, previewing, and rendering of the Statement of Account (SOA) into printable/downloadable PDF formats.
 * **`js/customer.js`:** Manages the CRM aspect, handling saving, updating, fetching, and deleting customer records (Name, TIN, Address).
-* **`js/pwa.js`:** Generates and registers the service worker (`sw.js`) and handles the PWA manifest/installability prompts.
+* **`js/pwa.js`:** Generates and registers the service worker (`sw.js`) utilizing individual `cache.add` methods (instead of a blanket `addAll`) to prevent caching execution failures. It handles the dynamic blob creation and PWA installability prompts.
 * **`js/privacy.js`:** Renders the static privacy policy and terms of service views.
 
 ### 2. Backend API (Cloudflare Workers)
