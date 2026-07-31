@@ -9,7 +9,7 @@ const DashboardManager = {
         tabStatus: 'In Progress' // 'In Progress' | 'Completed' | 'Delivered' | 'Group B' | 'All'
     },
 
-    _tabOrder: ['all', 'active', 'completed', 'delivered', 'taxable'],
+    _tabOrder: ['all', 'active', 'delivered', 'completed', 'taxable'],
 
     setViewMode(mode) {
         this.state.viewMode = mode;
@@ -24,6 +24,23 @@ const DashboardManager = {
             listBtn.className = mode === 'list' ? activeClass : inactiveClass;
         }
         this.renderUI();
+    },
+
+    _ensureDeliveredTabExists() {
+        const activeTab = document.getElementById('dash-btn-active');
+        const existingDelivered = document.getElementById('dash-btn-delivered');
+        
+        // Dynamically inject the Delivered tab into the HTML if it's missing
+        if (activeTab && !existingDelivered) {
+            const deliveredBtn = document.createElement('button');
+            deliveredBtn.id = 'dash-btn-delivered';
+            deliveredBtn.className = "tab-btn flex-1 min-w-[80px] py-1.5 px-3 text-xs font-bold text-gray-500 rounded transition hover:bg-gray-200";
+            deliveredBtn.innerText = "Delivered";
+            deliveredBtn.onclick = () => window.switchDashTab('delivered');
+            
+            // Insert it right after the 'active' (In Progress) tab
+            activeTab.parentNode.insertBefore(deliveredBtn, activeTab.nextSibling);
+        }
     },
 
     switchTab(status) {
@@ -88,6 +105,8 @@ const DashboardManager = {
     },
 
     async fetchAndRender() {
+        this._ensureDeliveredTabExists();
+        
         const container = document.getElementById('dashProjectsContainer');
         if (!container) return;
         
