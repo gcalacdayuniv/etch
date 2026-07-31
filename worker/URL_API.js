@@ -32,6 +32,7 @@ export default {
         case 'getProjectLedger': responsePayload = await handleGetProjectLedger(env.DB, data); break;
         case 'addExpense': responsePayload = await handleAddExpense(env.DB, env, data); break;
         case 'updateProjectStatus': responsePayload = await handleUpdateProjectStatus(env.DB, data); break;
+        case 'updateProjectCustomer': responsePayload = await handleUpdateProjectCustomer(env.DB, data); break;
         case 'toggleProjectTax': responsePayload = await handleToggleTax(env.DB, data); break;
 
         // --- QUOTATIONS ---
@@ -207,15 +208,32 @@ async function handleUploadLogo(db, env, data) {
 async function handleGetDashboardData(db, data) {
   try {
     const { agentId, role } = data;
+    
+    // Fetch Projects
     let projectsRes = role === 'Superuser'
       ? await db.prepare("SELECT * FROM projects").all()
       : await db.prepare("SELECT * FROM projects WHERE main_agent_id = ? OR co_agent_id = ?").bind(agentId, agentId).all();
     let projects = projectsRes.results || [];
+    
+    // Fetch Customers and map to projects for display
+    const custRes = await db.prepare("SELECT id, name FROM customers").all();
+    const customers = custRes.results || [];
+    const custMap = {};
+    customers.forEach(c => { custMap[c.id] = c.name; });
+
+    // Fetch Ledgers
     const ledgerRes = await db.prepare("SELECT * FROM project_ledger").all();
     const allLedgers = ledgerRes.results || [];
-    projects = projects.map(p => { p.transactions = allLedgers.filter(l => l.project_id === p.id); return p; });
+    
+    projects = projects.map(p => { 
+        p.transactions = allLedgers.filter(l => l.project_id === p.id); 
+        p.customer_name = custMap[p.customer_id] || 'No Customer Linked';
+        return p; 
+    });
+    
     const fixedCosts = allLedgers.filter(l => l.project_id === 'GLOBAL' && l.type === 'FixedCost');
-    return { success: true, data: { projects, fixedCosts } };
+    
+    return { success: true, data: { projects, fixedCosts, customers } };
   } catch (e) { return { success: false, message: e.toString() }; }
 }
 
@@ -237,7 +255,7 @@ async function handleGetSOA(db, data) {
     try {
         const query = `
             SELECT p.id as project_id, p.name as project_name, p.invoice_number, p.invoice_date, p.due_date, p.customer_id,
-                   q.quotation_number, c.name as customer_name
+                   q.quotation_number, c.name as customer_name, c.tin as customer_tin, c.address as customer_address
             FROM projects p
             LEFT JOIN quotations q ON q.project_id = p.id
             LEFT JOIN customers c ON p.customer_id = c.id
@@ -354,6 +372,13 @@ async function handleUpdateProjectStatus(db, data) {
       await db.prepare("UPDATE projects SET status = ? WHERE name = ?").bind(data.status, data.projectName).run();
   }
   return { success: true };
+}
+
+async function handleUpdateProjectCustomer(db, data) {
+  try {
+    await db.prepare("UPDATE projects SET customer_id = ? WHERE id = ?").bind(data.customerId, data.projectId).run();
+    return { success: true };
+  } catch(e) { return { success: false, message: e.toString() }; }
 }
 
 async function handleToggleTax(db, data) {
