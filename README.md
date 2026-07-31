@@ -11,10 +11,10 @@ The client-side is a static Single-Page Application (SPA) using Vanilla JavaScri
 
 * **`index.html` & `styles.css`:** Main entry point, the static layout shell, sidebar navigation, and global styling. `index.html` loads the app via `<script type="module" src="./js/router.js"></script>`. Includes navigations for Dashboard, Projects, Quotations, Customers, and Settings.
 * **`js/globals.js`:** Core configurations, state management (currently active user, role), shared utilities (currency formatters, date formatters, UI toasts, loaders), and centralized API fetch wrappers. 
-* **`js/components.js`:** Manages dynamic injection of repetitive HTML components like navigation bars, headers, and specific modal layouts (including the Statement of Accounts, Invoice Details, and SOA PDF Preview modals) to keep `index.html` cleaner.
+* **`js/components.js`:** Manages dynamic injection of repetitive HTML components like navigation bars, headers, and specific modal layouts (including the Statement of Accounts, Invoice Details, SOA PDF Preview, and Project Customer Edit modals) to keep `index.html` cleaner.
 * **`js/router.js`:** Hash-based client-side router. Manages view toggling, authentication checks, and lazy-loading of specific module initializations based on the active route.
 * **`js/ui.js`:** Handles global UI interactions, sidebar toggling, theme adjustments, and authentication/login modal logic.
-* **`js/dashboard.js`:** Fetches and renders the high-level metrics, active project lists, and global fixed costs for both agents and superusers. Includes categorized tab views (All, In Progress, Completed, Delivered, and Group B) for streamlined tracking. The Delivered tab logic is dynamically injected into the UI to enforce modular decoupling.
+* **`js/dashboard.js`:** Fetches and renders the high-level metrics, active project lists, and global fixed costs for both agents and superusers. Includes categorized tab views (All, In Progress, Delivered, Completed, and Group B) for streamlined tracking. It also handles dynamic inline injection of missing filters (Customer Select) and tabs (Delivered).
 * **`js/project.js`:** Handles the creation of new projects, fetching project lists, filtering, project delivery & invoicing, and rendering project cards.
 * **`js/ledger.js`:** Manages the detailed financial breakdown of individual projects. Handles adding expenses/sales, calculating agent shares, tracking receipts, and supporting the Statement of Accounts (SOA) calculations.
 * **`js/quotation-form.js` & `js/quotation-history.js`:** Manages the dynamic multi-item quotation form submission, history tracking, soft deletion, and restoration of client quotes.
@@ -27,7 +27,7 @@ The client-side is a static Single-Page Application (SPA) using Vanilla JavaScri
 ### 2. Backend API (Cloudflare Workers)
 * **`worker/URL_API.js`:** The centralized edge controller. It implements open CORS headers (`Access-Control-Allow-Origin: *`) for broad accessibility where needed. It parses JSON payloads and routes actions via a master `switch` statement.
   * **Core Actions:** `login`, `updateProfileDetails`, `updateAccountPassword`, `uploadSignature`, `uploadLogo`, `uploadAvatar`.
-  * **Dashboard/Projects:** `getDashboardData`, `addFixedCost`, `getProjectList`, `createProject`, `getProjectLedger`, `addExpense`, `updateProjectStatus`, `toggleProjectTax`, `getStatementOfAccount`.
+  * **Dashboard/Projects:** `getDashboardData`, `addFixedCost`, `getProjectList`, `createProject`, `getProjectLedger`, `addExpense`, `updateProjectStatus`, `updateProjectCustomer`, `toggleProjectTax`, `getStatementOfAccount`.
   * **Quotations/Customers:** `getUserQuotations`, `deleteQuotation`, `restoreQuotation`, `updateQuotationStatus`, `getQuotationDetail`, `processForm`, `editQuotation`, `getCustomers`, `saveCustomer`, `deleteDbCustomer`.
   * **External Feeds:** `ProfessionalFinanceDashboard` — A specialized endpoint that queries the database, calculates the net income for completed projects and global expenses, and returns a strictly formatted JSON Standard Data Contract designed to feed the master Financial Dashboard.
 * **`GAS/code.gs`:** A Google Apps Script web app acting as a microservice for processing Base64 image strings and storing them into designated Google Drive folders, returning the public URL back to the Worker.
