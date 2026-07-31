@@ -1,76 +1,136 @@
-/**
- * pwa.js
- * Handles Service Worker registration and dynamic PWA manifest injection
- * Bypasses strict static uploader limits by generating the manifest in-memory.
- */
+// ==========================================================
+// PWA.JS
+// Domain: Progressive Web App Manifest & Service Worker
+// ==========================================================
 
 const PWAManager = {
-    init: function() {
+    init() {
         this.injectManifest();
         this.registerServiceWorker();
+        this.setupInstallPrompt();
     },
 
-    injectManifest: function() {
-        // 1. Define the manifest as a standard JS object
-        const manifestData = {
-            "name": "Etch System",
-            "short_name": "Etch",
-            "description": "Etch Signage Project and Ledger Management System",
-            "start_url": "/",
-            "display": "standalone",
-            "background_color": "#f3f4f6",
-            "theme_color": "#4338ca",
-            "orientation": "portrait-primary",
-            "icons": [
+    injectManifest() {
+        const manifest = {
+            name: "Etch Portal",
+            short_name: "Etch",
+            description: "Etch Signage Internal Portal",
+            start_url: "/",
+            display: "standalone",
+            background_color: "#ffffff",
+            theme_color: "#4f46e5",
+            icons: [
                 {
-                    "src": "https://www.etchsignage.com/icon-192x192.png",
-                    "sizes": "192x192",
-                    "type": "image/png",
-                    "purpose": "any maskable"
-                },
-                {
-                    "src": "https://www.etchsignage.com/icon-512x512.png",
-                    "sizes": "512x512",
-                    "type": "image/png",
-                    "purpose": "any maskable"
+                    src: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzRmNDZlNSI+PHBhdGggZD0iTTEyIDJMMiAxMmwzIDloMTRsMy05eiIvPjwvc3ZnPg==",
+                    sizes: "192x192",
+                    type: "image/svg+xml",
+                    purpose: "any maskable"
                 }
             ]
         };
 
-        // 2. Convert to a JSON string and create a Blob
-        const manifestString = JSON.stringify(manifestData);
-        const blob = new Blob([manifestString], { type: 'application/manifest+json' });
+        const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+        const manifestURL = URL.createObjectURL(blob);
         
-        // 3. Create an object URL in the browser's memory
-        const manifestUrl = URL.createObjectURL(blob);
-
-        // 4. Create the <link> tag and inject it into the <head>
-        const link = document.createElement('link');
-        link.rel = 'manifest';
-        link.href = manifestUrl;
-        
-        // We append it before other scripts just to be safe
-        document.head.appendChild(link);
-        console.log('[PWA] Dynamic manifest injected successfully.');
+        let link = document.querySelector('link[rel="manifest"]');
+        if (!link) {
+            link = document.createElement('link');
+            link.rel = 'manifest';
+            document.head.appendChild(link);
+        }
+        link.href = manifestURL;
     },
 
-    registerServiceWorker: function() {
+    registerServiceWorker() {
         if ('serviceWorker' in navigator) {
+            // Dynamically generate the service worker code to satisfy static deploy constraints
+            const swCode = `
+                const CACHE_NAME = 'etch-portal-v2';
+                const ASSETS = [
+                    './',
+                    './index.html',
+                    './styles.css',
+                    './js/router.js',
+                    './js/globals.js',
+                    './js/components.js',
+                    './js/ui.js',
+                    './js/dashboard.js',
+                    './js/project.js',
+                    './js/ledger.js',
+                    './js/quotation-form.js',
+                    './js/quotation-history.js',
+                    './js/quotation_pdf.js',
+                    './js/soa_pdf.js',
+                    './js/customer.js',
+                    './js/pwa.js',
+                    './js/privacy.js'
+                ];
+
+                self.addEventListener('install', (event) => {
+                    self.skipWaiting();
+                    event.waitUntil(
+                        caches.open(CACHE_NAME).then(async (cache) => {
+                            // Using a loop with try/catch bypasses the 'addAll' TypeError
+                            // by ensuring one missing file doesn't crash the entire caching process.
+                            for (let url of ASSETS) {
+                                try {
+                                    const req = new Request(url, { cache: 'reload' });
+                                    await cache.add(req);
+                                } catch (err) {
+                                    console.warn('PWA SW: Failed to cache asset - ' + url, err);
+                                }
+                            }
+                        })
+                    );
+                });
+
+                self.addEventListener('activate', (event) => {
+                    event.waitUntil(
+                        caches.keys().then((keyList) => {
+                            return Promise.all(keyList.map((key) => {
+                                if (key !== CACHE_NAME) {
+                                    return caches.delete(key);
+                                }
+                            }));
+                        })
+                    );
+                    self.clients.claim();
+                });
+
+                self.addEventListener('fetch', (event) => {
+                    if (event.request.method !== 'GET') return;
+                    
+                    // Network first, falling back to cache
+                    event.respondWith(
+                        fetch(event.request).then((networkResponse) => {
+                            return caches.open(CACHE_NAME).then((cache) => {
+                                if (event.request.url.startsWith(self.location.origin)) {
+                                    cache.put(event.request, networkResponse.clone());
+                                }
+                                return networkResponse;
+                            });
+                        }).catch(() => caches.match(event.request))
+                    );
+                });
+            `;
+
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(blob);
+
             window.addEventListener('load', () => {
-                // Ensure your sw.js is uploaded as a static JS file!
-                navigator.serviceWorker.register('/sw.js')
-                    .then((registration) => {
-                        console.log('[PWA] ServiceWorker registration successful with scope: ', registration.scope);
-                    })
-                    .catch((err) => {
-                        console.error('[PWA] ServiceWorker registration failed: ', err);
-                    });
+                navigator.serviceWorker.register(swUrl)
+                    .then(reg => console.log('Service Worker registered successfully'))
+                    .catch(err => console.error('Service Worker registration failed: ', err));
             });
-        } else {
-            console.warn('[PWA] Service workers are not supported by this browser.');
         }
+    },
+
+    setupInstallPrompt() {
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            window._deferredInstallPrompt = e;
+        });
     }
 };
 
-// Initialize immediately
 PWAManager.init();
