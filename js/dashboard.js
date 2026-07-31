@@ -6,10 +6,10 @@
 const DashboardManager = {
     state: {
         viewMode: 'grid', // 'grid' | 'list'
-        tabStatus: 'In Progress' // 'In Progress' | 'Completed' | 'Group B' | 'All'
+        tabStatus: 'In Progress' // 'In Progress' | 'Completed' | 'Delivered' | 'Group B' | 'All'
     },
 
-    _tabOrder: ['all', 'active', 'completed', 'taxable'],
+    _tabOrder: ['all', 'active', 'completed', 'delivered', 'taxable'],
 
     setViewMode(mode) {
         this.state.viewMode = mode;
@@ -32,7 +32,7 @@ const DashboardManager = {
             btn.className = "tab-btn flex-1 min-w-[80px] py-1.5 px-3 text-xs font-bold text-gray-500 rounded transition hover:bg-gray-200";
         });
 
-        const statusMap = { 'all': 'All', 'active': 'In Progress', 'completed': 'Completed', 'taxable': 'Group B' };
+        const statusMap = { 'all': 'All', 'active': 'In Progress', 'completed': 'Completed', 'delivered': 'Delivered', 'taxable': 'Group B' };
         this.state.tabStatus = statusMap[status] || 'Group B';
 
         const activeBtn = document.getElementById(`dash-btn-${status}`);
@@ -43,7 +43,7 @@ const DashboardManager = {
     },
 
     _getCurrentTabKey() {
-        const reverseMap = { 'All': 'all', 'In Progress': 'active', 'Completed': 'completed', 'Group B': 'taxable' };
+        const reverseMap = { 'All': 'all', 'In Progress': 'active', 'Completed': 'completed', 'Delivered': 'delivered', 'Group B': 'taxable' };
         return reverseMap[this.state.tabStatus] || 'active';
     },
 
@@ -62,8 +62,10 @@ const DashboardManager = {
     },
 
     clearFilters() {
-        document.getElementById('dashStartDate').value = '';
-        document.getElementById('dashEndDate').value = '';
+        const sDate = document.getElementById('dashStartDate');
+        const eDate = document.getElementById('dashEndDate');
+        if (sDate) sDate.value = '';
+        if (eDate) eDate.value = '';
         this.renderUI();
     },
 
@@ -108,7 +110,9 @@ const DashboardManager = {
             }
         } catch (error) {
             console.error("Dashboard Fetch Error:", error);
-            container.innerHTML = "<p class='col-span-full text-center py-6 text-red-500 font-bold'>Error loading dashboard.</p>";
+            if (container) {
+                container.innerHTML = "<p class='col-span-full text-center py-6 text-red-500 font-bold'>Error loading dashboard.</p>";
+            }
         }
     },
 
@@ -123,13 +127,17 @@ const DashboardManager = {
             }
         }
 
-        const sDate = document.getElementById('dashStartDate').value;
-        const eDate = document.getElementById('dashEndDate').value;
+        const startInput = document.getElementById('dashStartDate');
+        const endInput = document.getElementById('dashEndDate');
+        const sDate = startInput ? startInput.value : '';
+        const eDate = endInput ? endInput.value : '';
+        
         let filteredProj = window.allProjects || [];
         let activeFC = window.globalFixedCosts || [];
 
         if (this.state.tabStatus === 'In Progress') filteredProj = filteredProj.filter(p => p.status === 'In Progress');
         else if (this.state.tabStatus === 'Completed') filteredProj = filteredProj.filter(p => p.status === 'Completed');
+        else if (this.state.tabStatus === 'Delivered') filteredProj = filteredProj.filter(p => p.status === 'Delivered');
         else if (this.state.tabStatus === 'Group B') filteredProj = filteredProj.filter(p => p.is_taxable !== 0);
 
         if (sDate || eDate) {
@@ -153,6 +161,8 @@ const DashboardManager = {
 
         filteredProj.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         const container = document.getElementById('dashProjectsContainer');
+        
+        if (!container) return; // Fail safe
 
         if (typeof sessionRole !== 'undefined' && sessionRole === 'Superuser') {
             this._renderAdminView(container, filteredProj, activeFC);
@@ -188,8 +198,8 @@ const DashboardManager = {
                 return { p, pSales, pExp, taxAmt, totalAgentGrossShares, pNetToCompany, thumbUrl, rawExp: pExp - taxAmt };
             } else {
                 const grossShare = netBeforeShares * shareRatio;
-                const myDeds = txs.filter(t => t.type === 'Deduction' && t.agent_id === sessionId).reduce((sum, t) => sum + Number(t.amount), 0);
-                const myAbonos = txs.filter(t => t.type === 'Abono' && t.agent_id === sessionId).reduce((sum, t) => sum + Number(t.amount), 0);
+                const myDeds = txs.filter(t => t.type === 'Deduction' && t.agent_id === (typeof sessionId !== 'undefined' ? sessionId : '')).reduce((sum, t) => sum + Number(t.amount), 0);
+                const myAbonos = txs.filter(t => t.type === 'Abono' && t.agent_id === (typeof sessionId !== 'undefined' ? sessionId : '')).reduce((sum, t) => sum + Number(t.amount), 0);
                 const netPayout = grossShare - myDeds + myAbonos;
                 return { p, grossShare, myDeds, myAbonos, netPayout, thumbUrl };
             }
@@ -197,8 +207,11 @@ const DashboardManager = {
     },
 
     _renderAdminView(container, filteredProj, activeFC) {
-        document.getElementById('adminDashboard').classList.remove('hidden');
-        document.getElementById('agentDashboard').classList.add('hidden');
+        const adminDash = document.getElementById('adminDashboard');
+        const agentDash = document.getElementById('agentDashboard');
+        
+        if (adminDash) adminDash.classList.remove('hidden');
+        if (agentDash) agentDash.classList.add('hidden');
 
         if (filteredProj.length === 0) {
             container.className = 'grid grid-cols-1';
@@ -212,8 +225,11 @@ const DashboardManager = {
     },
 
     _renderAgentView(container, filteredProj) {
-        document.getElementById('adminDashboard').classList.add('hidden');
-        document.getElementById('agentDashboard').classList.remove('hidden');
+        const adminDash = document.getElementById('adminDashboard');
+        const agentDash = document.getElementById('agentDashboard');
+        
+        if (adminDash) adminDash.classList.add('hidden');
+        if (agentDash) agentDash.classList.remove('hidden');
 
         let totalAgentShare = 0;
         if (filteredProj.length === 0) {
@@ -225,7 +241,11 @@ const DashboardManager = {
             if (this.state.viewMode === 'list') this._renderProjectListView(container, projData, 'agent');
             else this._renderProjectGridView(container, projData, 'agent');
         }
-        if(typeof fmt !== 'undefined') document.getElementById('agentGrossShare').innerText = fmt(totalAgentShare);
+        
+        const shareEl = document.getElementById('agentGrossShare');
+        if (shareEl && typeof fmt !== 'undefined') {
+            shareEl.innerText = fmt(totalAgentShare);
+        }
     },
 
     _updateAdminMetrics(projData, activeFC) {
@@ -281,11 +301,17 @@ const DashboardManager = {
         });
 
         if(typeof fmt !== 'undefined') {
-            document.getElementById('dashGrossRev').innerText = fmt(macroGrossRev);
-            document.getElementById('dashProjExp').innerText = isHidden ? '***' : '- ₱' + macroProjExp.toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('dashFixedCosts').innerText = isHidden ? '***' : '- ₱' + macroFixedCosts.toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('dashNetIncome').innerText = fmt(macroGrossRev - macroProjExp - macroFixedCosts);
-            document.getElementById('fixedCostsBody').innerHTML = fcRowsHtml;
+            const grossRevEl = document.getElementById('dashGrossRev');
+            const projExpEl = document.getElementById('dashProjExp');
+            const fixedCostEl = document.getElementById('dashFixedCosts');
+            const netIncomeEl = document.getElementById('dashNetIncome');
+            const fcBodyEl = document.getElementById('fixedCostsBody');
+            
+            if (grossRevEl) grossRevEl.innerText = fmt(macroGrossRev);
+            if (projExpEl) projExpEl.innerText = isHidden ? '***' : '- ₱' + macroProjExp.toLocaleString(undefined, {minimumFractionDigits: 2});
+            if (fixedCostEl) fixedCostEl.innerText = isHidden ? '***' : '- ₱' + macroFixedCosts.toLocaleString(undefined, {minimumFractionDigits: 2});
+            if (netIncomeEl) netIncomeEl.innerText = fmt(macroGrossRev - macroProjExp - macroFixedCosts);
+            if (fcBodyEl) fcBodyEl.innerHTML = fcRowsHtml;
 
             const grossRevBody = document.getElementById('grossRevBody');
             if (grossRevBody) {
@@ -315,31 +341,25 @@ const DashboardManager = {
         }
     },
 
-    _renderProjectGridView(container, projData, role) {
-        container.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
-        container.innerHTML = projData.map(data => this._buildCardHTML(data, role, 'grid')).join('');
-    },
-
-    _renderProjectListView(container, projData, role) {
-        container.className = 'flex flex-col gap-2';
-        container.innerHTML = projData.map(data => this._buildCardHTML(data, role, 'list')).join('');
-    },
-
     _buildCardHTML(data, role, layout) {
         const { p, thumbUrl } = data;
         const pDate = new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const isHidden = (typeof amountsHidden !== 'undefined') ? amountsHidden : false;
         
+        const soaBtnHTML = p.status === 'Delivered' 
+            ? `<button onclick="generateSOAForProject('${p.id}', event)" class="mt-2 w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-1.5 rounded text-xs transition border border-indigo-200 flex items-center justify-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> Preview SOA</button>`
+            : '';
+
         if (layout === 'grid') {
             const metricsHTML = role === 'superuser' 
-                ? `<div class="flex justify-between text-xs"><span class="text-gray-400">Sales</span><span class="font-bold text-emerald-600">${fmt(data.pSales)}</span></div>
+                ? `<div class="flex justify-between text-xs"><span class="text-gray-400">Sales</span><span class="font-bold text-emerald-600">${typeof fmt !== 'undefined' ? fmt(data.pSales) : data.pSales}</span></div>
                    <div class="flex justify-between text-xs"><span class="text-gray-400">Expenses</span><span class="font-bold text-red-500">${isHidden ? '***' : '-₱' + data.pExp.toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
                    <div class="flex justify-between text-xs pb-1.5 border-b border-gray-100"><span class="text-gray-400">Agent Shares</span><span class="font-bold text-orange-500">${isHidden ? '***' : '-₱' + data.totalAgentGrossShares.toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
-                   <div class="flex justify-between text-xs pt-0.5"><span class="font-bold text-indigo-900">Net to Co.</span><span class="font-black text-indigo-700">${fmt(data.pNetToCompany)}</span></div>`
-                : `<div class="flex justify-between text-xs"><span class="text-gray-400">Gross Share</span><span class="font-bold text-emerald-600">${fmt(data.grossShare)}</span></div>
+                   <div class="flex justify-between text-xs pt-0.5"><span class="font-bold text-indigo-900">Net to Co.</span><span class="font-black text-indigo-700">${typeof fmt !== 'undefined' ? fmt(data.pNetToCompany) : data.pNetToCompany}</span></div>`
+                : `<div class="flex justify-between text-xs"><span class="text-gray-400">Gross Share</span><span class="font-bold text-emerald-600">${typeof fmt !== 'undefined' ? fmt(data.grossShare) : data.grossShare}</span></div>
                    <div class="flex justify-between text-xs"><span class="text-gray-400">Deductions</span><span class="font-bold text-red-500">${isHidden ? '***' : '-₱' + data.myDeds.toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
                    <div class="flex justify-between text-xs pb-1.5 border-b border-gray-100"><span class="text-gray-400">Abonos</span><span class="font-bold text-emerald-500">${isHidden ? '***' : '+₱' + data.myAbonos.toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
-                   <div class="flex justify-between text-xs pt-0.5"><span class="font-bold text-indigo-900">Net Takeaway</span><span class="font-black text-indigo-700">${fmt(data.netPayout)}</span></div>`;
+                   <div class="flex justify-between text-xs pt-0.5"><span class="font-bold text-indigo-900">Net Takeaway</span><span class="font-black text-indigo-700">${typeof fmt !== 'undefined' ? fmt(data.netPayout) : data.netPayout}</span></div>`;
 
             return `
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition overflow-hidden cursor-pointer" onclick="navigateTo('/ledger/${encodeURIComponent(p.name)}')">
@@ -355,21 +375,23 @@ const DashboardManager = {
                         <div class="space-y-0.5">${metricsHTML}</div>
                     </div>
                 </div>
+                ${p.status === 'Delivered' ? `<div class="px-3 pb-3">${soaBtnHTML}</div>` : ''}
             </div>`;
         } else {
-            const statusDot = p.status === 'Completed' ? `<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 inline-block" title="Completed"></span>` : `<span class="w-2 h-2 rounded-full bg-blue-400 shrink-0 inline-block" title="In Progress"></span>`;
+            const statusColor = p.status === 'Completed' ? 'bg-emerald-400' : (p.status === 'Delivered' ? 'bg-indigo-400' : 'bg-blue-400');
+            const statusDot = `<span class="w-2 h-2 rounded-full ${statusColor} shrink-0 inline-block" title="${p.status}"></span>`;
             
             const listStatsHTML = role === 'superuser'
-                ? `<span>Sales: <b class="text-emerald-600">${fmt(data.pSales)}</b></span>
+                ? `<span>Sales: <b class="text-emerald-600">${typeof fmt !== 'undefined' ? fmt(data.pSales) : data.pSales}</b></span>
                    <span>Exp: <b class="text-red-500">${isHidden ? '***' : '₱' + data.pExp.toLocaleString(undefined,{minimumFractionDigits:2})}</b></span>
                    <span>Shares: <b class="text-orange-500">${isHidden ? '***' : '₱' + data.totalAgentGrossShares.toLocaleString(undefined,{minimumFractionDigits:2})}</b></span>`
-                : `<span>Share: <b class="text-emerald-600">${fmt(data.grossShare)}</b></span>
+                : `<span>Share: <b class="text-emerald-600">${typeof fmt !== 'undefined' ? fmt(data.grossShare) : data.grossShare}</b></span>
                    <span>Deds: <b class="text-red-500">${isHidden ? '***' : '₱' + data.myDeds.toLocaleString(undefined,{minimumFractionDigits:2})}</b></span>
                    <span>Abono: <b class="text-emerald-500">${isHidden ? '***' : '₱' + data.myAbonos.toLocaleString(undefined,{minimumFractionDigits:2})}</b></span>`;
 
             const listRightHTML = role === 'superuser'
-                ? `<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Net to Co.</p><p class="text-sm font-black text-indigo-700 whitespace-nowrap">${fmt(data.pNetToCompany)}</p>`
-                : `<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Net Take</p><p class="text-sm font-black text-indigo-700 whitespace-nowrap">${fmt(data.netPayout)}</p>`;
+                ? `<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Net to Co.</p><p class="text-sm font-black text-indigo-700 whitespace-nowrap">${typeof fmt !== 'undefined' ? fmt(data.pNetToCompany) : data.pNetToCompany}</p>`
+                : `<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Net Take</p><p class="text-sm font-black text-indigo-700 whitespace-nowrap">${typeof fmt !== 'undefined' ? fmt(data.netPayout) : data.netPayout}</p>`;
 
             return `
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition overflow-hidden cursor-pointer flex items-center gap-0" onclick="navigateTo('/ledger/${encodeURIComponent(p.name)}')">
@@ -386,7 +408,10 @@ const DashboardManager = {
                         ${listStatsHTML}
                     </div>
                 </div>
-                <div class="shrink-0 px-3 py-2 text-right">${listRightHTML}</div>
+                <div class="shrink-0 px-3 py-2 text-right flex flex-col items-end gap-1">
+                    <div>${listRightHTML}</div>
+                    ${p.status === 'Delivered' ? `<button onclick="generateSOAForProject('${p.id}', event)" class="px-2 py-1 bg-indigo-50 text-indigo-700 font-bold rounded text-[10px] border border-indigo-200 hover:bg-indigo-100 transition">View SOA</button>` : ''}
+                </div>
             </div>`;
         }
     },
@@ -394,21 +419,28 @@ const DashboardManager = {
     async submitFixedCost(e) {
         e.preventDefault();
         const btn = document.getElementById('fcSubmitBtn');
+        if (!btn) return;
+        
         btn.innerText = "Saving..."; btn.disabled = true;
         
+        const dateInput = document.getElementById('fcDate');
+        const descInput = document.getElementById('fcDesc');
+        const amtInput = document.getElementById('fcAmt');
+        
         const res = await apiCall("addFixedCost", {
-            date: document.getElementById('fcDate').value,
-            description: document.getElementById('fcDesc').value,
-            amount: document.getElementById('fcAmt').value,
-            agentName: sessionName,
-            agentId: sessionId
+            date: dateInput ? dateInput.value : new Date().toISOString().split('T')[0],
+            description: descInput ? descInput.value : '',
+            amount: amtInput ? amtInput.value : 0,
+            agentName: typeof sessionName !== 'undefined' ? sessionName : 'Unknown',
+            agentId: typeof sessionId !== 'undefined' ? sessionId : ''
         });
         
         btn.innerText = "Save"; btn.disabled = false;
         if (res.success) {
-            closeFSModal('fixedCostModal');
-            document.getElementById('fixedCostForm').reset();
-            document.getElementById('fcDate').value = new Date().toISOString().split('T')[0];
+            if (typeof closeFSModal === 'function') closeFSModal('fixedCostModal');
+            const form = document.getElementById('fixedCostForm');
+            if (form) form.reset();
+            if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
             this.fetchAndRender();
         } else {
             alert("Error: " + res.message);
@@ -439,10 +471,47 @@ const DashboardManager = {
 };
 
 // ==========================================
+// SOA GENERATION HANDLER
+// ==========================================
+window.generateSOAForProject = async function(projectId, event) {
+    if (event) event.stopPropagation();
+    
+    if (typeof showLoading === 'function') showLoading("Fetching SOA details...");
+    
+    try {
+        const res = await apiCall('getStatementOfAccount', {});
+        if (typeof hideLoading === 'function') hideLoading();
+        
+        if (res && res.success) {
+            const soaData = res.data.find(d => d.project_id === projectId);
+            if (soaData) {
+                if (typeof openSOAPDFPreview === 'function') {
+                    openSOAPDFPreview(soaData);
+                } else {
+                    alert("SOA viewer script is not loaded properly.");
+                }
+            } else {
+                alert("Could not find full statement data for this delivered project. Ensure it has an invoice.");
+            }
+        } else {
+            alert("Failed to fetch SOA data.");
+        }
+    } catch (e) {
+        if (typeof hideLoading === 'function') hideLoading();
+        alert("An error occurred while fetching SOA details.");
+        console.error(e);
+    }
+};
+
+// ==========================================
 // EVENT LISTENERS & GLOBAL EXPORTS
 // ==========================================
 
-document.getElementById('fixedCostForm')?.addEventListener('submit', DashboardManager.submitFixedCost.bind(DashboardManager));
+const fcForm = document.getElementById('fixedCostForm');
+if (fcForm) {
+    fcForm.addEventListener('submit', DashboardManager.submitFixedCost.bind(DashboardManager));
+}
+
 document.addEventListener('DOMContentLoaded', () => DashboardManager.initSwipeGesture());
 if (document.readyState !== 'loading') DashboardManager.initSwipeGesture();
 
