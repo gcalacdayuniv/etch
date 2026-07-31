@@ -341,6 +341,16 @@ const DashboardManager = {
         }
     },
 
+    _renderProjectGridView(container, projData, role) {
+        container.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
+        container.innerHTML = projData.map(data => this._buildCardHTML(data, role, 'grid')).join('');
+    },
+
+    _renderProjectListView(container, projData, role) {
+        container.className = 'flex flex-col gap-2';
+        container.innerHTML = projData.map(data => this._buildCardHTML(data, role, 'list')).join('');
+    },
+
     _buildCardHTML(data, role, layout) {
         const { p, thumbUrl } = data;
         const pDate = new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
