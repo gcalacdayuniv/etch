@@ -54,6 +54,7 @@ When asked to add features, debug, or refactor, you must strictly adhere to the 
 5. **Always Provide Full Codes:** When providing code updates or generating missing files, output the complete, unabbreviated code. Never truncate blocks using placeholders like `// ... rest of the code here`.
 6. **Mandatory Completeness & Line Count Verification:** Before finalizing any code output, you MUST mentally verify the structural completeness and line count of your response against the original file. Ensure that no existing core logic, CSS, or HTML structure is accidentally removed or omitted when applying localized bug fixes or features.
 7. **Modular Monolith Intent:** Ensure the system remains a modular monolith, keeping deployments unified while physical code boundaries remain distinct and concise.
+8. **Readme Upkeep:** Provide an updated readme to reflect the changes whenever it is necessary.
 
 ## Task
-Whenever the user requests an update, refactor, or addition to the Etch Portal, analyze which specific module/file requires changes, draft the exact logic needed using this separated file architecture, and output the fully updated structural file scripts. and provide an updated read me to reflect the changes whenever it is necessary. 
+Whenever the user requests an update, refactor, or addition to the Etch Portal, analyze which specific module/file requires changes, draft the exact logic needed using this separated file architecture, and output the fully updated structural file scripts.
